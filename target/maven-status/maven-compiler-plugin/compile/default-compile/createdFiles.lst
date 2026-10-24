@@ -5,6 +5,7 @@ com\guild\api\GuildAPICallback.class
 com\guild\listeners\PlayerListener.class
 com\guild\api\event\GuildLevelUpEvent.class
 com\guild\config\GuildConfig.class
+com\guild\listeners\ExperienceListener$1.class
 com\guild\api\event\GuildCreateEvent.class
 com\guild\listeners\ChatInputListener$PendingChatAction.class
 com\guild\api\GuildData.class
@@ -26,6 +27,7 @@ com\guild\config\ExperienceConfig.class
 com\guild\GuildPlugin.class
 com\guild\config\ShopConfig$ShopItemEntry.class
 com\guild\guild\GuildBank.class
+com\guild\listeners\ExperienceListener$Modern.class
 com\guild\guild\GuildPermission.class
 com\guild\currency\GuildCurrency$CurrencyType.class
 com\guild\api\event\GuildDisbandEvent.class
@@ -36,6 +38,7 @@ com\guild\papi\GuildPAPIExpansion.class
 com\guild\commands\GuildCommand.class
 com\guild\config\SimpleFileConfig.class
 com\guild\gui\GuildGUI.class
+com\guild\listeners\ExperienceListener.class
 com\guild\api\event\GuildKickEvent.class
 com\guild\utils\LangUtils.class
 com\guild\database\DatabaseManager.class

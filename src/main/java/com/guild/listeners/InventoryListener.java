@@ -253,7 +253,8 @@ public class InventoryListener implements Listener
                                                 else if (name.contains("重命名"))
                                                 {
                                                     player.closeInventory();
-                                                    chatInputListener.registerPendingAction( player.getUniqueId(), "guild_motd", "rename");
+                                                    // 3.0.8：修复重命名误注册为 guild_motd 导致改名实际修改公告的 BUG
+                                                    chatInputListener.registerPendingAction( player.getUniqueId(), "guild_rename", null);
                                                     player.sendMessage(ChatColor.YELLOW + "请输入新名称:");
                                                 }
                                                 else if (name.contains("更改标签") || name.contains("标签"))
@@ -312,7 +313,7 @@ public class InventoryListener implements Listener
 
                                                     private void handleSetNickname(Player player, UUID targetUuid)
                                                     {
-                                                        String targetName = Bukkit.getOfflinePlayer(targetUuid).getName();
+                                                        String targetName = plugin.getGuildManager().getPlayerNameCached(targetUuid);
                                                         player.closeInventory();
                                                         player.sendMessage(ChatColor.GOLD + "请输入 " + targetName + " 的新昵称（输入 C 取消）");
                                                         chatInputListener.registerPendingAction(player.getUniqueId(), "set_nickname", targetUuid);
@@ -337,8 +338,16 @@ public class InventoryListener implements Listener
                                                             player.sendMessage(ChatColor.RED + "该玩家已经是管理员或会长");
                                                             return;
                                                         }
-                                                        guild.setMemberRole(targetUuid, GuildRole.OFFICER);
-                                                        String targetName = Bukkit.getOfflinePlayer(targetUuid).getName();
+                                                        // 3.0.9：GUI 晋升统一走管理器，使权限/职位上限/冷却校验与事件一致生效
+                                                        if (!plugin.getGuildManager().promoteMember(guild.getName(), targetUuid, player.getUniqueId()))
+                                                        {
+                                                            if (targetMember.getRole() != GuildRole.MEMBER)
+                                                            {
+                                                                player.sendMessage(ChatColor.RED + "该玩家已经是管理员或会长");
+                                                            }
+                                                            return;
+                                                        }
+                                                        String targetName = plugin.getGuildManager().getPlayerNameCached(targetUuid);
                                                         player.sendMessage(ChatColor.GREEN + "已将 " + targetName + " 提升为管理员");
                                                         Player targetPlayer = Bukkit.getPlayer(targetUuid);
                                                         if (targetPlayer != null)
@@ -372,8 +381,16 @@ public class InventoryListener implements Listener
                                                             player.sendMessage(ChatColor.RED + "不能降级会长");
                                                             return;
                                                         }
-                                                        guild.setMemberRole(targetUuid, GuildRole.MEMBER);
-                                                        String targetName = Bukkit.getOfflinePlayer(targetUuid).getName();
+                                                        // 3.0.9：GUI 降级统一走管理器（含 allow-self-demote / demote-cooldown）
+                                                        if (!plugin.getGuildManager().demoteMember(guild.getName(), targetUuid, player.getUniqueId()))
+                                                        {
+                                                            if (targetMember.getRole() == GuildRole.MEMBER)
+                                                            {
+                                                                player.sendMessage(ChatColor.RED + "该玩家已经是普通成员");
+                                                            }
+                                                            return;
+                                                        }
+                                                        String targetName = plugin.getGuildManager().getPlayerNameCached(targetUuid);
                                                         player.sendMessage(ChatColor.GREEN + "已将 " + targetName + " 降为普通成员");
                                                         Player targetPlayer = Bukkit.getPlayer(targetUuid);
                                                         if (targetPlayer != null)
@@ -402,9 +419,13 @@ public class InventoryListener implements Listener
                                                             player.sendMessage(ChatColor.RED + "不能踢出会长");
                                                             return;
                                                         }
-                                                        String targetName = Bukkit.getOfflinePlayer(targetUuid).getName();
-                                                        guild.removeMember(targetUuid);
-                                                        plugin.getGuildManager().removePlayerFromGuild(targetUuid);
+                                                        String targetName = plugin.getGuildManager().getPlayerNameCached(targetUuid);
+                                                        // 3.0.9：GUI 踢人统一走管理器，触发 GuildKickEvent 并记录加入冷却
+                                                        if (!plugin.getGuildManager().kickMember(guild.getName(), targetUuid, player.getUniqueId()))
+                                                        {
+                                                            player.sendMessage(ChatColor.RED + "踢出失败，目标职位高于你或数据异常");
+                                                            return;
+                                                        }
                                                         player.sendMessage(ChatColor.GREEN + "已将 " + targetName + " 踢出公会");
                                                         Player targetPlayer = Bukkit.getPlayer(targetUuid);
                                                         if (targetPlayer != null)
@@ -622,7 +643,7 @@ public class InventoryListener implements Listener
                                                                             {
                                                                                 UUID targetUuid = entry.getKey();
                                                                                 GuildMember targetMember = entry.getValue();
-                                                                                String playerName = Bukkit.getOfflinePlayer(targetUuid).getName();
+                                                                                String playerName = plugin.getGuildManager().getPlayerNameCached(targetUuid);
                                                                                 String display = targetMember.getNickname() != null ? targetMember.getNickname() : playerName;
                                                                                 if (name.equals(playerName) || name.equals(display))
                                                                                 {
@@ -639,7 +660,7 @@ public class InventoryListener implements Listener
                                                                                     player.sendMessage(ChatColor.RED + "只有公会会长才能升级公会");
                                                                                     return;
                                                                                 }
-                                                                                if (guild.getLevel() >= 100)
+                                                                                if (guild.getLevel() >= guild.getMaxLevel())
                                                                                 {
                                                                                     player.sendMessage(ChatColor.RED + "公会已达到最高等级");
                                                                                     return;
@@ -848,27 +869,20 @@ public class InventoryListener implements Listener
                                                                                                     reopenCurrentAnvil(player);
                                                                                                     return;
                                                                                                 }
-                                                                                                long cost = plugin.getCurrencyConfig().getCreateCost();
-                                                                                                GuildCurrency currency = plugin.getGuildCurrency();
-                                                                                                GuildCurrency.CurrencyType currencyType = plugin.getCurrencyConfig().getCurrencyType();
-                                                                                                if (cost > 0 && !currency.withdraw(player.getUniqueId(), (long) cost, currencyType))
-                                                                                                {
-                                                                                                    player.sendMessage(plugin.getMessage("guild.insufficient-funds") .replace("%cost%", String.valueOf(cost)));
-                                                                                                    PENDING_GUILD_NAME.remove(player.getUniqueId());
-                                                                                                    ANVIL_TEXT_CACHE.remove(player.getUniqueId());
-                                                                                                    player.closeInventory();
-                                                                                                    return;
-                                                                                                }
+                                                                                                // 3.0.8：createGuild 内部已统一扣费，不再预扣/退款，避免 GUI 创建路径双重扣费
                                                                                                 Guild guild = plugin.getGuildManager().createGuild(guildName, player);
                                                                                                 if (guild == null)
                                                                                                 {
-                                                                                                    player.sendMessage(plugin.getMessage("guild.already-exists"));
-                                                                                                    if (cost > 0) currency.deposit(player.getUniqueId(), (long) cost, currencyType);
+                                                                                                    // 名称重复时给出明确提示，其余失败原因（权限/资金）由管理器发送
+                                                                                                    if (plugin.getGuildManager().getGuild(guildName) != null)
+                                                                                                    {
+                                                                                                        player.sendMessage(plugin.getMessage("guild.already-exists"));
+                                                                                                    }
                                                                                                     reopenCurrentAnvil(player);
                                                                                                     return;
                                                                                                 }
                                                                                                 guild.setTag(tag);
-                                                                                                plugin.getDatabaseManager().saveGuild(guild);
+                                                                                                plugin.getGuildManager().scheduleSavePublic(guild);
                                                                                                 PENDING_GUILD_NAME.remove(player.getUniqueId());
                                                                                                 ANVIL_TEXT_CACHE.remove(player.getUniqueId());
                                                                                                 player.sendMessage(plugin.getMessage("guild.created").replace("%name%", guildName));

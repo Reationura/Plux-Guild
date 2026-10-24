@@ -168,66 +168,53 @@ public int getOnlineCount(String guildName)
 
     public GuildData createGuild(String name, Player owner)
     {
-        GuildCreateEvent event = new GuildCreateEvent(owner, name, null);
-        Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled()) return null;
-        Guild guild = plugin.getGuildManager().createGuild(event.getGuildName(), owner);
-        if (guild != null && event.getGuildTag() != null && !event.getGuildTag().isEmpty())
-        {
-            guild.setTag(event.getGuildTag());
-            plugin.getDatabaseManager().saveGuild(guild);
-        }
+        // 3.0.8：创建事件已下沉至 GuildManager 统一触发，API 层不再重复触发，避免事件双发
+        Guild guild = plugin.getGuildManager().createGuild(name, owner);
         return guild != null ? new GuildData(guild) : null;
     }
 
     public GuildData createGuild(String name, String tag, Player owner)
     {
-        GuildCreateEvent event = new GuildCreateEvent(owner, name, tag);
-        Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled()) return null;
-        Guild guild = plugin.getGuildManager().createGuild(event.getGuildName(), owner);
-        if (guild != null)
+        Guild guild = plugin.getGuildManager().createGuild(name, owner);
+        if (guild != null && tag != null && !tag.isEmpty()
+            && (guild.getTag() == null || guild.getTag().isEmpty()))
         {
-            String finalTag = event.getGuildTag() != null ? event.getGuildTag() : tag;
-            guild.setTag(finalTag);
-            plugin.getDatabaseManager().saveGuild(guild);
+            // 监听器未通过事件修改标签时，应用 API 参数传入的标签
+            guild.setTag(tag);
+            plugin.getGuildManager().scheduleSavePublic(guild);
         }
         return guild != null ? new GuildData(guild) : null;
     }
 
     public boolean disbandGuild(String name, OfflinePlayer disbander)
     {
-        boolean result = plugin.getGuildManager().disbandGuild(name, disbander.getUniqueId());
-        if (result)
+        // 事件已由 GuildManager 统一触发；disbander 为 null 时回退为公会会长（兼容 disbandGuildAsync）
+        UUID disbanderUuid;
+        if (disbander != null)
         {
-            Bukkit.getPluginManager().callEvent( new GuildDisbandEvent(name, disbander));
+            disbanderUuid = disbander.getUniqueId();
         }
-        return result;
+        else
+        {
+            Guild guild = plugin.getGuildManager().getGuild(name);
+            if (guild == null) return false;
+            disbanderUuid = guild.getOwner();
+        }
+        return plugin.getGuildManager().disbandGuild(name, disbanderUuid);
     }
 
     public boolean joinGuild(Player player, String guildName)
     {
-        GuildJoinEvent event = new GuildJoinEvent(player, guildName);
-        Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled()) return false;
         return plugin.getGuildManager().joinGuild(guildName, player);
     }
 
     public boolean leaveGuild(Player player)
     {
-        Guild guild = plugin.getGuildManager().getPlayerGuild(player.getUniqueId());
-        if (guild == null) return false;
-        GuildLeaveEvent event = new GuildLeaveEvent(player, guild.getName());
-        Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled()) return false;
         return plugin.getGuildManager().leaveGuild(player.getUniqueId());
     }
 
     public boolean kickMember(String guildName, UUID targetUuid, OfflinePlayer kicker)
     {
-        GuildKickEvent event = new GuildKickEvent(guildName, targetUuid, kicker);
-        Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled()) return false;
         return plugin.getGuildManager().kickMember(guildName, targetUuid, kicker != null ? kicker.getUniqueId() : null);
     }
 
@@ -276,14 +263,8 @@ public void addExperience(UUID playerUuid, long amount)
 
     public boolean upgradeGuild(String guildName, UUID playerUuid)
     {
-        Guild guild = plugin.getGuildManager().getGuild(guildName);
-        int oldLevel = guild != null ? guild.getLevel() : 0;
-        boolean success = plugin.getGuildManager().upgradeGuild(guildName, playerUuid);
-        if (success && guild != null)
-        {
-            Bukkit.getPluginManager().callEvent( new GuildLevelUpEvent(guildName, oldLevel, guild.getLevel()));
-        }
-        return success;
+        // 升级事件已由 GuildManager 统一触发
+        return plugin.getGuildManager().upgradeGuild(guildName, playerUuid);
     }
 
 @Override

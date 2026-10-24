@@ -456,6 +456,13 @@ public class DatabaseManager
                     ps.setLong(10, guild.getCreatedTime());
                     ps.executeUpdate();
                 }
+                // 3.0.8：同一事务内先清空该公会的成员行再批量插入，
+                // 修复旧版只 upsert 不删除导致被踢/退会成员重启后“复活”的 BUG
+                try (PreparedStatement delPs = conn.prepareStatement("DELETE FROM guild_members WHERE guild_name = ?"))
+                {
+                    delPs.setString(1, guild.getName());
+                    delPs.executeUpdate();
+                }
                 try (PreparedStatement insertPs = conn.prepareStatement(upsertSql("guild_members", "guild_name", "uuid", "role", "joined_time", "total_contribution", "daily_contribution", "muted", "muted_until", "nickname")))
                 {
                     for (GuildMember member : guild.getMembers().values())

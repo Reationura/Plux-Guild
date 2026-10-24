@@ -1,5 +1,6 @@
 package com.guild.listeners;
 import com.guild.GuildPlugin;
+import com.guild.gui.GuildMemberSettingsGUI;
 import com.guild.guild.Guild;
 import com.guild.guild.GuildMember;
 import com.guild.guild.PlayerSettings;
@@ -9,7 +10,6 @@ import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
@@ -47,6 +47,11 @@ public class PlayerListener implements Listener
     public void onPlayerQuit(PlayerQuitEvent event)
     {
         Player player = event.getPlayer();
+        // 3.0.8：下线时清理挂起的聊天输入与 GUI 状态，
+        // 修复静态映射泄漏及玩家下次上线第一条聊天消息被误吞的 BUG
+        plugin.getChatInputListener().removePendingAction(player.getUniqueId());
+        InventoryListener.cleanupPlayer(player.getUniqueId());
+        GuildMemberSettingsGUI.removeTargetUuid(player);
         Guild guild = plugin.getGuildManager().getPlayerGuild(player.getUniqueId());
         if (guild == null) return;
         for (GuildMember member : guild.getMembers().values())
@@ -62,15 +67,6 @@ public class PlayerListener implements Listener
         }
     }
 
-    @EventHandler
-    public void onPlayerDeath(PlayerDeathEvent event)
-    {
-        Player victim = event.getEntity();
-        Player killer = victim.getKiller();
-        if (killer != null && killer != victim)
-        {
-            long exp = plugin.getExperienceConfig().getPlayerKillExp();
-            plugin.getGuildManager().addExperience(killer.getUniqueId(), exp);
-        }
-    }
+    // 3.0.9：玩家击杀的公会经验发奖已整体迁移到 ExperienceListener.onEntityDeath 统一处理
+    // （旧路径漏掉了 features.yml 的 experience 总开关与限流，并会与新监听器重复计入）
 }
