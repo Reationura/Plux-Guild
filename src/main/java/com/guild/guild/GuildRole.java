@@ -1,57 +1,52 @@
 package com.guild.guild;
 
-public enum GuildRole
-{
-    MEMBER("\u6210\u5458", 1, "&7"), OFFICER("\u7ba1\u7406\u5458", 2, "&a"), OWNER("\u4f1a\u957f", 3, "&6");
-
+public enum GuildRole {
+    
+    MEMBER("成员", 1, "&7"),
+    OFFICER("管理员", 2, "&a"),
+    OWNER("会长", 3, "&6");
+    
     private String displayName;
-
     private int level;
-
     private String color;
-
-    private GuildRole(String string2, int n2, String string3)
-    {
-        this.displayName = string2;
-        this.level = n2;
-        this.color = string3;
+    
+    GuildRole(String displayName, int level, String color) {
+        this.displayName = displayName;
+        this.level = level;
+        this.color = color;
     }
-
-    public String getDisplayName()
-    {
-        return this.displayName;
+    
+    public String getDisplayName() {
+        return displayName;
     }
-
-    public int getLevel()
-    {
-        return this.level;
+    
+    public int getLevel() {
+        return level;
     }
-
-    public String getColor()
-    {
-        return this.color;
+    
+    public String getColor() {
+        return color;
     }
-
-    public GuildRole promote()
-    {
-        switch ( this)
-        {
+    
+    public GuildRole promote() {
+        switch (this) {
             case MEMBER:
-            {
                 return OFFICER;
-            }}
-
-            return this;
-        }
-
-        public GuildRole demote()
-        {
-            switch ( this)
-            {
-                case OFFICER:
-                {
-                    return MEMBER;
-                }}
-
+            case OFFICER:
+            case OWNER:
+            default:
                 return this;
-            }}
+        }
+    }
+    
+    public GuildRole demote() {
+        switch (this) {
+            case OFFICER:
+                return MEMBER;
+            case MEMBER:
+            case OWNER:
+            default:
+                return this;
+        }
+    }
+}

@@ -1,108 +1,37 @@
 name: Guild
-version: 3.0.7
+version: 2.0.1
 main: com.guild.GuildPlugin
 author: ya_xzer21145
-description: 功能全面的公会管理插件，原生兼容 1.8 ~ 26.1+，支持 Spigot/Paper/Purpur/Folia
+description: 一个功能完善的公会插件，支持1.8.8至1.21.1所有版本，兼容Spigot、Paper等服务端核心
 api-version: 1.13
-folia-supported: true
-
-# 软依赖：缺失时自动降级，不影响核心功能
-softdepend:
-  - Vault
-  - PlaceholderAPI
-  - ProtocolLib
-  - PlayerPoints
 
 commands:
   guild:
-    description: 公会主指令（创建/管理/信息/银行等）
+    description: 公会主指令
     aliases: [gh]
-    usage: |
-      §6/guild <create|info|invite|kick|leave|disband|chat|bank|top|reload|help>
+    usage: /guild <子指令>
   guildchat:
-    description: 公会聊天频道快捷指令
+    description: 公会聊天
     aliases: [guildc, gc]
     usage: /guildchat <消息>
   guildgui:
-    description: 打开公会 GUI 界面
-    usage: /guildgui [bank]
+    description: 打开公会GUI界面
+    usage: /guildgui
+
+  guildbank:
+    description: 公会银行指令
+    aliases: [gb]
+    usage: /guildbank
 
 permissions:
-  # ========== 权限树 ==========
-  # 设计原则：
-  #   guild.*        → 全部权限（仅给 OP）
-  #   guild.admin    → 管理操作权限（踢人/升级/解散等）
-  #   guild.player   → 基础玩家权限（聊天/查看）
-  #   单项权限       → 细粒度控制，默认跟随父级
-
   guild.*:
     description: 所有公会权限
-    default: op
     children:
       guild.admin: true
       guild.player: true
-
   guild.admin:
-    description: 管理员权限（创建、邀请、踢出、升降级、解散、升级、银行管理）
+    description: 公会管理员权限
     default: op
-    children:
-      guild.create: true
-      guild.invite: true
-      guild.kick: true
-      guild.promote: true
-      guild.demote: true
-      guild.disband: true
-      guild.upgrade: true
-      guild.bank: true
-      guild.manage: true
-      guild.settings: true
-      guild.chat: true
-
   guild.player:
-    description: 基础玩家权限（聊天、查看信息、使用银行基础功能）
-    default: true
-    children:
-      guild.chat: true
-      guild.info: true
-      guild.shop: true
-
-  # ========== 细粒度单项权限 ==========
-  guild.create:
-    description: 创建公会
-    default: op
-  guild.invite:
-    description: 邀请玩家加入公会
-    default: op
-  guild.kick:
-    description: 踢出公会成员
-    default: op
-  guild.promote:
-    description: 提升成员职位
-    default: op
-  guild.demote:
-    description: 降低成员职位
-    default: op
-  guild.disband:
-    description: 解散公会
-    default: op
-  guild.upgrade:
-    description: 升级公会等级
-    default: op
-  guild.bank:
-    description: 使用公会银行存取款
-    default: true
-  guild.chat:
-    description: 在公会频道发言
-    default: true
-  guild.manage:
-    description: 管理公会设置（重命名/标签/MOTD）
-    default: op
-  guild.settings:
-    description: 修改个人公会设置
-    default: true
-  guild.info:
-    description: 查看公会信息
-    default: true
-  guild.shop:
-    description: 使用公会商店
+    description: 公会玩家权限
     default: true

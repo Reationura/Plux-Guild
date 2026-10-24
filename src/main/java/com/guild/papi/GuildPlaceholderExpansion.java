@@ -1,135 +1,143 @@
 package com.guild.papi;
+
 import com.guild.GuildPlugin;
+import com.guild.guild.Guild;
+import com.guild.guild.GuildMember;
+import com.guild.guild.GuildRole;
+import me.clip.placeholderapi.expansion.PlaceholderExpansion;
+import org.bukkit.entity.Player;
 
-public class GuildPlaceholderExpansion
-{
+import java.util.UUID;
+
+public class GuildPlaceholderExpansion extends PlaceholderExpansion {
+    
     private final GuildPlugin plugin;
-
-    public GuildPlaceholderExpansion(GuildPlugin guildPlugin)
-    {
-        this.plugin = guildPlugin;
+    
+    public GuildPlaceholderExpansion(GuildPlugin plugin) {
+        this.plugin = plugin;
     }
-
-    public boolean register()
-    {
-        try
-        {
-            plugin.getLogger().info("Attempting to register PAPI expansion...");
-            try
-            {
-                Class.forName("me.clip.placeholderapi.expansion.PlaceholderExpansion");
-                plugin.getLogger().info("Found PAPI v2 (PlaceholderExpansion class)");
-                return registerV2();
-            }
-            catch (ClassNotFoundException e1)
-            {
-                try
-                {
-                    Class.forName("me.clip.placeholderapi.external.EZPlaceholderHook");
-                    plugin.getLogger().info("Found PAPI v1 (EZPlaceholderHook class)");
-                    return registerV1();
-                }
-                catch (ClassNotFoundException e2)
-                {
-                    plugin.getLogger().info("PlaceholderAPI not found, placeholder integration disabled");
-                    return false;
-                }
-            }
-        }
-        catch (Throwable e)
-        {
-            plugin.getLogger().severe("PAPI registration failed: " + e.getMessage());
-            e.printStackTrace();
-            return false;
-        }
+    
+    @Override
+    public String getIdentifier() {
+        return "guild";
     }
-
-    private boolean registerV2()
-    {
-        try
-        {
-            GuildPAPIExpansion expansion = new GuildPAPIExpansion(plugin);
-            boolean result = expansion.register();
-            if (result)
-            {
-                plugin.getLogger().info("PAPI v2 expansion registered (identifier: " + expansion.getIdentifier() + ", version: " + expansion.getVersion() + ")");
-                return true;
-            }
-            else
-            {
-                plugin.getLogger().warning("PAPI v2 register() returned false, trying alternative...");
-                return registerV2Alternative();
-            }
-        }
-        catch (NoClassDefFoundError e)
-        {
-            plugin.getLogger().severe("PAPI v2 class def error: " + e.getMessage());
-            return false;
-        }
-        catch (Throwable e)
-        {
-            plugin.getLogger().severe("PAPI v2 registration error: " + e.getMessage());
-            e.printStackTrace();
-            return false;
-        }
+    
+    @Override
+    public String getAuthor() {
+        return "ya_xzer21145";
     }
-
-    private boolean registerV2Alternative()
-    {
-        try
-        {
-            Class<?> papiClass = Class.forName("me.clip.placeholderapi.PlaceholderAPI");
-            Class<?> expansionClass = Class.forName("me.clip.placeholderapi.expansion.PlaceholderExpansion");
-            java.lang.reflect.Method registerExpansion = papiClass.getMethod("registerExpansion", expansionClass);
-            GuildPAPIExpansion expansion = new GuildPAPIExpansion(plugin);
-            registerExpansion.invoke(null, expansion);
-            plugin.getLogger().info("PAPI v2 expansion registered via alternative method");
-            return true;
-        }
-        catch (Throwable e)
-        {
-            plugin.getLogger().severe("PAPI v2 alternative registration failed: " + e.getMessage());
-            return false;
-        }
+    
+    @Override
+    public String getVersion() {
+        return "2.0.1";
     }
-
-    private boolean registerV1()
-    {
-        try
-        {
-            Class<?> hookClass = Class.forName("me.clip.placeholderapi.external.EZPlaceholderHook");
-            Class<?> papiClass = Class.forName("me.clip.placeholderapi.PlaceholderAPI");
-            java.lang.reflect.Constructor<?> ctor = hookClass.getDeclaredConstructor(String.class, String.class);
-            ctor.setAccessible(true);
-            Object hook = ctor.newInstance("guild", "ya_xzer21145");
-            java.lang.reflect.Method onHook = hookClass.getDeclaredMethod("onPlaceholderHook", org.bukkit.entity.Player.class, String.class);
-            onHook.setAccessible(true);
-            try
-            {
-                java.lang.reflect.Method registerMethod = papiClass.getMethod("registerPlaceholderHook", String.class, hookClass);
-                registerMethod.invoke(null, "guild", hook);
-            }
-            catch (NoSuchMethodException e)
-            {
-                try
-                {
-                    java.lang.reflect.Method registerMethod = papiClass.getMethod("registerPlaceholderHook",
-                        org.bukkit.plugin.Plugin.class, String.class, hookClass);
-                    registerMethod.invoke(null, plugin, "guild", hook);
-                }
-                catch (NoSuchMethodException ex)
-                {
-                    plugin.getLogger().severe("Could not find PAPI v1 register method");
-                    return false;
-                }
-            }
-            plugin.getLogger().info("PAPI v1 expansion registered (note: V1 has limited placeholder support)");
-            return true;
+    
+    @Override
+    public boolean persist() {
+        return true;
+    }
+    
+    @Override
+    public String onPlaceholderRequest(Player player, String params) {
+        if (player == null) return null;
+        
+        UUID uuid = player.getUniqueId();
+        Guild guild = plugin.getGuildManager().getPlayerGuild(uuid);
+        
+        if (params.equalsIgnoreCase("name")) {
+            return guild != null ? guild.getName() : "";
         }
-        catch (Throwable e)
-        {
-            plugin.getLogger().severe("PAPI v1 registration failed: " + e.getMessage());
-            return false;
+        
+        if (params.equalsIgnoreCase("tag")) {
+            return guild != null ? guild.getTag() : "";
         }
+        
+        if (params.equalsIgnoreCase("tag_color")) {
+            return guild != null ? guild.getTagColor() : "";
+        }
+        
+        if (params.equalsIgnoreCase("level")) {
+            return guild != null ? String.valueOf(guild.getLevel()) : "0";
+        }
+        
+        if (params.equalsIgnoreCase("experience")) {
+            return guild != null ? String.valueOf(guild.getExperience()) : "0";
+        }
+        
+        if (params.equalsIgnoreCase("required_experience")) {
+            return guild != null ? String.valueOf(guild.getRequiredExperience()) : "0";
+        }
+        
+        if (params.equalsIgnoreCase("owner")) {
+            if (guild == null) return "";
+            return plugin.getServer().getOfflinePlayer(guild.getOwner()).getName();
+        }
+        
+        if (params.equalsIgnoreCase("member_count")) {
+            return guild != null ? String.valueOf(guild.getMembers().size()) : "0";
+        }
+        
+        if (params.equalsIgnoreCase("motd")) {
+            return guild != null ? guild.getMotd() : "";
+        }
+        
+        if (params.equalsIgnoreCase("role")) {
+            if (guild == null) return "";
+            GuildMember member = guild.getMember(uuid);
+            return member != null ? member.getRole().getDisplayName() : "";
+        }
+        
+        if (params.equalsIgnoreCase("role_level")) {
+            if (guild == null) return "0";
+            GuildMember member = guild.getMember(uuid);
+            return member != null ? String.valueOf(member.getRole().getLevel()) : "0";
+        }
+        
+        if (params.equalsIgnoreCase("contribution")) {
+            if (guild == null) return "0";
+            GuildMember member = guild.getMember(uuid);
+            return member != null ? String.valueOf(member.getTotalContribution()) : "0";
+        }
+        
+        if (params.equalsIgnoreCase("daily_contribution")) {
+            if (guild == null) return "0";
+            GuildMember member = guild.getMember(uuid);
+            return member != null ? String.valueOf(member.getDailyContribution()) : "0";
+        }
+        
+        if (params.equalsIgnoreCase("joined_time")) {
+            if (guild == null) return "0";
+            GuildMember member = guild.getMember(uuid);
+            return member != null ? String.valueOf(member.getJoinedTime()) : "0";
+        }
+        
+        if (params.equalsIgnoreCase("is_owner")) {
+            if (guild == null) return "false";
+            return String.valueOf(guild.getOwner().equals(uuid));
+        }
+        
+        if (params.equalsIgnoreCase("is_officer")) {
+            if (guild == null) return "false";
+            GuildMember member = guild.getMember(uuid);
+            return member != null ? String.valueOf(member.getRole() == GuildRole.OFFICER) : "false";
+        }
+        
+        if (params.equalsIgnoreCase("is_member")) {
+            return String.valueOf(guild != null);
+        }
+        
+        if (params.equalsIgnoreCase("bank_balance")) {
+            return guild != null ? String.valueOf(guild.getBank().getBalance()) : "0";
+        }
+        
+        if (params.equalsIgnoreCase("currency")) {
+            return String.valueOf(plugin.getGuildManager().getPlayerGuildCurrency(uuid));
+        }
+        
+        if (params.equalsIgnoreCase("has_guild")) {
+            return String.valueOf(guild != null);
+        }
+        
+        return null;
     }
 }

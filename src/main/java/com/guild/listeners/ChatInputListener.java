@@ -1,359 +1,242 @@
 package com.guild.listeners;
+
 import com.guild.GuildPlugin;
-import com.guild.gui.GuildBankGUI;
-import com.guild.gui.GuildGUI;
-import com.guild.gui.GuildManageGUI;
 import com.guild.guild.Guild;
 import com.guild.guild.GuildMember;
-import com.guild.guild.GuildRole;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
-public class ChatInputListener implements Listener
-{
+public class ChatInputListener implements Listener {
+    
     private final GuildPlugin plugin;
-
-    private final Map<UUID, PendingChatAction> pendingActions = new ConcurrentHashMap<>();
-
-    public ChatInputListener(GuildPlugin plugin)
-    {
+    private final Map<UUID, ChatInput> pendingInputs;
+    
+    public ChatInputListener(GuildPlugin plugin) {
         this.plugin = plugin;
+        this.pendingInputs = new HashMap<>();
     }
-
-    public void registerPendingAction(UUID playerUuid, String actionType, Object context)
-    {
-        pendingActions.put(playerUuid, new PendingChatAction(actionType, context));
-    }
-
-    public void removePendingAction(UUID playerUuid)
-    {
-        pendingActions.remove(playerUuid);
-    }
-
-    public boolean hasPendingAction(UUID playerUuid)
-    {
-        return pendingActions.containsKey(playerUuid);
-    }@ EventHandler(priority = EventPriority.HIGHEST) public void onAsyncPlayerChat(AsyncPlayerChatEvent event)
-    {
+    
+    @EventHandler
+    public void onPlayerChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
-        PendingChatAction action = pendingActions.remove(player.getUniqueId());
-        if (action == null) return;
+        UUID uuid = player.getUniqueId();
+        
+        if (!pendingInputs.containsKey(uuid)) {
+            return;
+        }
+        
         event.setCancelled(true);
-        String input = event.getMessage().trim();
-        switch (action.getActionType())
-        {
-            case "guild_name": handleGuildNameCreation(player, input);
-            break;
-            case "guild_tag_for_create": handleGuildTagForCreate(player, input, action.getContext());
-            break;
-            case "guild_tag": handleGuildTagSetting(player, input, action.getContext());
-            break;
-            case "guild_motd": handleGuildMotdSetting(player, input);
-            break;
-            case "bank_deposit": handleBankDeposit(player, input);
-            break;
-            case "bank_withdraw": handleBankWithdraw(player, input);
-            break;
-            case "set_nickname": handleSetNickname(player, input, action.getContext());
-            break;
-            case "confirm_leave": handleConfirmLeave(player, input, action.getContext());
-            break;
-            case "confirm_disband": handleConfirmDisband(player, input, action.getContext());
-            break;
-            default: break;
-        }}
-
-        private void handleGuildNameCreation(Player player, String input)
-        {
-            if (input.equalsIgnoreCase("cancel"))
-            {
-                player.sendMessage(ChatColor.YELLOW + "已取消创建公会");
-                return;
-            }
-            int minLen = plugin.getGuildConfig().getMinNameLength();
-            int maxLen = plugin.getGuildConfig().getMaxNameLength();
-            if (input.length() < minLen || input.length() > maxLen)
-            {
-                player.sendMessage(plugin.getMessage("guild.name-length-invalid") .replace("%min%", String.valueOf(minLen)) .replace("%max%", String.valueOf(maxLen)));
-                return;
-            }
-            // 正则改为配置驱动（guild.yml name-regex），修复旧版硬编码导致配置失效
-            String regex = plugin.getGuildConfig().getNameRegex();
-            if (regex == null || regex.isEmpty())
-            {
-                regex = "[a-zA-Z0-9\u4e00-\u9fa5_]+";
-            }
-            if (!input.matches(regex))
-            {
-                player.sendMessage(plugin.getMessage("guild.name-chars-invalid"));
-                return;
-            }
-            if (plugin.getGuildManager().getGuild(input) != null)
-            {
-                player.sendMessage(plugin.getMessage("guild.already-exists"));
-                return;
-            }
-            player.sendMessage(ChatColor.YELLOW + "========== 创建公会 ==========");
-            player.sendMessage(ChatColor.GOLD + "公会名称: " + input);
-            player.sendMessage(ChatColor.GOLD + "请输入公会标签（1-6字符）");
-            player.sendMessage(ChatColor.GRAY + "输入 'cancel' 取消创建");
-            registerPendingAction(player.getUniqueId(), "guild_tag_for_create", input);
+        
+        ChatInput input = pendingInputs.get(uuid);
+        String message = event.getMessage();
+        
+        if (message.equalsIgnoreCase("C")) {
+            player.sendMessage(ChatColor.YELLOW + "已取消操作");
+            pendingInputs.remove(uuid);
+            return;
         }
-
-        private void handleGuildTagForCreate(Player player, String input, Object context)
-        {
-            String guildName = (String) context;
-            if (input.equalsIgnoreCase("cancel"))
-            {
-                player.sendMessage(ChatColor.YELLOW + "已取消创建公会");
-                return;
-            }
-            int maxTagLen = plugin.getGuildConfig().getMaxTagLength();
-            if (input.length() < 1 || input.length() > maxTagLen)
-            {
-                player.sendMessage(plugin.getMessage("guild.tag-length-invalid") .replace("%max%", String.valueOf(maxTagLen)));
-                player.sendMessage(ChatColor.GOLD + "请重新输入公会标签（1-" + maxTagLen + "字符）");
-                registerPendingAction(player.getUniqueId(), "guild_tag_for_create", guildName);
-                return;
-            }
-            Guild guild = plugin.getGuildManager().createGuild(guildName, player);
-            if (guild == null)
-            {
-                player.sendMessage(plugin.getMessage("guild.already-exists"));
-                return;
-            }
-            guild.setTag(input);
-            plugin.getDatabaseManager().saveGuild(guild);
-            player.sendMessage(plugin.getMessage("guild.created").replace("%name%", guildName));
-            player.sendMessage(ChatColor.GREEN + "公会标签已设置为: " + input);
-
-            final Player finalPlayer = player;
-            Bukkit.getScheduler().runTask(plugin, () -> GuildGUI.openGUI(plugin, finalPlayer));
+        
+        if (System.currentTimeMillis() > input.getExpireTime()) {
+            player.sendMessage(ChatColor.RED + "操作已超时");
+            pendingInputs.remove(uuid);
+            return;
         }
-
-        private void handleGuildTagSetting(Player player, String input, Object context)
-        {
-            int maxTagLen = plugin.getGuildConfig().getMaxTagLength();
-            if (input.length() < 1 || input.length() > maxTagLen)
-            {
-                player.sendMessage(plugin.getMessage("guild.tag-length-invalid") .replace("%max%", String.valueOf(maxTagLen)));
-                return;
-            }
-            Guild guild = plugin.getGuildManager().getPlayerGuild(player.getUniqueId());
-            if (guild == null || !guild.hasPermission(player.getUniqueId(), "settings"))
-            {
-                player.sendMessage(plugin.getMessage("guild.no-permission"));
-                return;
-            }
-            guild.setTag(input);
-            plugin.getDatabaseManager().saveGuild(guild);
-            player.sendMessage(plugin.getMessage("guild.tag-updated").replace("%tag%", input));
-
-            final Player finalPlayer = player;
-
-            final Guild finalGuild = guild;
-            Bukkit.getScheduler().runTask(plugin, () -> GuildManageGUI.openGUI(plugin, finalPlayer, finalGuild));
+        
+        switch (input.getType()) {
+            case RENAME_GUILD:
+                handleRenameGuild(player, input.getGuild(), message);
+                break;
+            case CHANGE_TAG:
+                handleChangeTag(player, input.getGuild(), message);
+                break;
+            case SET_NICKNAME:
+                handleSetNickname(player, input.getGuild(), input.getTargetUuid(), message);
+                break;
+            case PROMOTE_MEMBER:
+                handlePromoteMember(player, input.getGuild(), message);
+                break;
+            case DEMOTE_MEMBER:
+                handleDemoteMember(player, input.getGuild(), message);
+                break;
+            case CONFIRM_DISBAND:
+                handleConfirmDisband(player, input.getGuild(), message);
+                break;
+            case CONFIRM_KICK:
+                handleConfirmKick(player, input.getGuild(), input.getTargetUuid(), message);
+                break;
         }
-
-        private void handleGuildMotdSetting(Player player, String input)
-        {
-            if (input.length() > 100)
-            {
-                player.sendMessage(plugin.getMessage("guild.motd-too-long"));
-                return;
-            }
-            Guild guild = plugin.getGuildManager().getPlayerGuild(player.getUniqueId());
-            if (guild == null || !guild.hasPermission(player.getUniqueId(), "motd"))
-            {
-                player.sendMessage(plugin.getMessage("guild.no-permission"));
-                return;
-            }
-            guild.setMotd(input);
-            plugin.getDatabaseManager().saveGuild(guild);
-            player.sendMessage(plugin.getMessage("guild.motd-updated"));
-
-            final Player finalPlayer = player;
-
-            final Guild finalGuild = guild;
-            Bukkit.getScheduler().runTask(plugin, () -> GuildManageGUI.openGUI(plugin, finalPlayer, finalGuild));
+        
+        pendingInputs.remove(uuid);
+    }
+    
+    private void handleRenameGuild(Player player, Guild guild, String newName) {
+        if (newName.length() < 3 || newName.length() > 16) {
+            player.sendMessage(ChatColor.RED + "公会名称长度必须在3到16之间");
+            return;
         }
-
-        private void handleBankDeposit(Player player, String input)
-        {
-            long amount = parsePositiveLong(player, input);
-            if (amount <= 0L) return;
-            Guild guild = plugin.getGuildManager().getPlayerGuild(player.getUniqueId());
-            if (guild == null)
-            {
-                player.sendMessage(plugin.getMessage("guild.not-in-guild"));
-                return;
-            }
-            if (plugin.getGuildManager().depositToBank(guild.getName(), player.getUniqueId(), amount))
-            {
-                player.sendMessage(plugin.getMessage("bank.deposit-success") .replace("%amount%", String.valueOf(amount)));
-            }
-            else
-            {
-                player.sendMessage(plugin.getMessage("bank.deposit-failed"));
-            }
-
-            final Player finalPlayer = player;
-
-            final Guild finalGuild = guild;
-            Bukkit.getScheduler().runTask(plugin, () -> GuildBankGUI.openBankGUI(plugin, finalPlayer, finalGuild));
+        
+        guild.setName(newName);
+        plugin.getDatabaseManager().saveGuild(guild);
+        player.sendMessage(ChatColor.GREEN + "公会已重命名为: " + newName);
+        guild.broadcast(ChatColor.YELLOW + "公会已重命名为: " + newName);
+    }
+    
+    private void handleChangeTag(Player player, Guild guild, String newTag) {
+        if (newTag.length() > 4) {
+            player.sendMessage(ChatColor.RED + "标签长度不能超过4个字符");
+            return;
         }
-
-        private void handleBankWithdraw(Player player, String input)
-        {
-            long amount = parsePositiveLong(player, input);
-            if (amount <= 0L) return;
-            Guild guild = plugin.getGuildManager().getPlayerGuild(player.getUniqueId());
-            if (guild == null)
-            {
-                player.sendMessage(plugin.getMessage("guild.not-in-guild"));
-                return;
-            }
-            if (plugin.getGuildManager().withdrawFromBank(guild.getName(), player.getUniqueId(), amount))
-            {
-                player.sendMessage(plugin.getMessage("bank.withdraw-success") .replace("%amount%", String.valueOf(amount)));
-            }
-            else
-            {
-                player.sendMessage(plugin.getMessage("bank.withdraw-failed"));
-            }
-
-            final Player finalPlayer = player;
-
-            final Guild finalGuild = guild;
-            Bukkit.getScheduler().runTask(plugin, () -> GuildBankGUI.openBankGUI(plugin, finalPlayer, finalGuild));
+        
+        guild.setTag(newTag);
+        plugin.getDatabaseManager().saveGuild(guild);
+        player.sendMessage(ChatColor.GREEN + "公会标签已更改为: " + newTag);
+        guild.broadcast(ChatColor.YELLOW + "公会标签已更改为: " + newTag);
+    }
+    
+    private void handleSetNickname(Player player, Guild guild, UUID targetUuid, String nickname) {
+        GuildMember member = guild.getMember(targetUuid);
+        if (member == null) {
+            player.sendMessage(ChatColor.RED + "该玩家不在公会中");
+            return;
         }
-
-        private long parsePositiveLong(Player player, String input)
-        {
-            long amount;
-            try
-            {
-                amount = Long.parseLong(input);
-            }
-            catch (NumberFormatException e)
-            {
-                player.sendMessage(plugin.getMessage("bank.invalid-amount"));
-                return -1L;
-            }
-            if (amount <= 0L)
-            {
-                player.sendMessage(plugin.getMessage("bank.amount-positive"));
-                return -1L;
-            }
-            return amount;
+        
+        member.setNickname(nickname);
+        plugin.getDatabaseManager().saveGuild(guild);
+        player.sendMessage(ChatColor.GREEN + "已设置 " + Bukkit.getOfflinePlayer(targetUuid).getName() + " 的昵称为: " + nickname);
+    }
+    
+    private void handlePromoteMember(Player player, Guild guild, String playerName) {
+        UUID targetUuid = getTargetUuidFromInput(player, guild);
+        if (targetUuid == null) {
+            player.sendMessage(ChatColor.RED + "无法找到目标玩家");
+            return;
         }
-
-        private void handleSetNickname(Player player, String input, Object context)
-        {
-            if (input.equalsIgnoreCase("C"))
-            {
-                player.sendMessage(ChatColor.YELLOW + "已取消设置昵称");
-                return;
-            }
-            if (input.length() > 16)
-            {
-                player.sendMessage(ChatColor.RED + "昵称长度不能超过16个字符");
-                return;
-            }
-            UUID targetUuid = (UUID) context;
-            Guild guild = plugin.getGuildManager().getPlayerGuild(player.getUniqueId());
-            if (guild == null)
-            {
-                player.sendMessage(ChatColor.RED + "你不在公会中");
-                return;
-            }
-            GuildMember member = guild.getMember(player.getUniqueId());
-            if (member == null || member.getRole() != GuildRole.OFFICER && member.getRole() != GuildRole.OWNER)
-            {
-                player.sendMessage(ChatColor.RED + "你没有权限设置昵称");
-                return;
-            }
-            guild.setMemberNickname(targetUuid, input);
-            String targetName = Bukkit.getOfflinePlayer(targetUuid).getName();
-            player.sendMessage(ChatColor.GREEN + "已将 " + targetName + " 的昵称设置为: " + input);
+        
+        if (!guild.isMember(targetUuid)) {
+            player.sendMessage(ChatColor.RED + "该玩家不在公会中");
+            return;
+        }
+        
+        if (plugin.getGuildManager().promoteMember(guild.getName(), targetUuid, player.getUniqueId())) {
+            player.sendMessage(ChatColor.GREEN + "已将 " + Bukkit.getOfflinePlayer(targetUuid).getName() + " 升为管理员");
+            guild.broadcast(ChatColor.YELLOW + Bukkit.getOfflinePlayer(targetUuid).getName() + " 被升为管理员");
+        } else {
+            player.sendMessage(ChatColor.RED + "升职失败，你没有权限或该成员已是最高职位");
+        }
+    }
+    
+    private void handleDemoteMember(Player player, Guild guild, String playerName) {
+        UUID targetUuid = getTargetUuidFromInput(player, guild);
+        if (targetUuid == null) {
+            player.sendMessage(ChatColor.RED + "无法找到目标玩家");
+            return;
+        }
+        
+        if (!guild.isMember(targetUuid)) {
+            player.sendMessage(ChatColor.RED + "该玩家不在公会中");
+            return;
+        }
+        
+        if (plugin.getGuildManager().demoteMember(guild.getName(), targetUuid, player.getUniqueId())) {
+            player.sendMessage(ChatColor.GREEN + "已将 " + Bukkit.getOfflinePlayer(targetUuid).getName() + " 降为普通成员");
+            guild.broadcast(ChatColor.YELLOW + Bukkit.getOfflinePlayer(targetUuid).getName() + " 被降为普通成员");
+        } else {
+            player.sendMessage(ChatColor.RED + "降职失败，你没有权限或该成员已是最低职位");
+        }
+    }
+    
+    private UUID getTargetUuidFromInput(Player player, Guild guild) {
+        ChatInput input = pendingInputs.get(player.getUniqueId());
+        if (input != null && input.getTargetUuid() != null) {
+            return input.getTargetUuid();
+        }
+        return null;
+    }
+    
+    private void handleConfirmDisband(Player player, Guild guild, String message) {
+        if (!message.equalsIgnoreCase("confirm")) {
+            player.sendMessage(ChatColor.RED + "已取消解散公会");
+            return;
+        }
+        
+        plugin.getGuildManager().disbandGuild(guild.getName());
+        player.sendMessage(ChatColor.GREEN + "公会已解散");
+        guild.broadcast(ChatColor.RED + "公会已被解散");
+    }
+    
+    private void handleConfirmKick(Player player, Guild guild, UUID targetUuid, String message) {
+        if (!message.equalsIgnoreCase("confirm")) {
+            player.sendMessage(ChatColor.RED + "已取消踢出操作");
+            return;
+        }
+        
+        String targetName = Bukkit.getOfflinePlayer(targetUuid).getName();
+        if (plugin.getGuildManager().kickMember(guild.getName(), targetUuid, player.getUniqueId())) {
+            player.sendMessage(ChatColor.GREEN + "已将 " + targetName + " 踢出公会");
+            guild.broadcast(ChatColor.YELLOW + targetName + " 被踢出了公会");
+            
             Player targetPlayer = Bukkit.getPlayer(targetUuid);
-            if (targetPlayer != null)
-            {
-                targetPlayer.sendMessage(ChatColor.GREEN + "你的公会昵称已被设置为: " + input);
+            if (targetPlayer != null && targetPlayer.isOnline()) {
+                targetPlayer.sendMessage(ChatColor.RED + "你已被踢出公会");
             }
-
-            final Player finalPlayer = player;
-            Bukkit.getScheduler().runTask(plugin, () -> GuildGUI.openGUI(plugin, finalPlayer));
+        } else {
+            player.sendMessage(ChatColor.RED + "踢出失败");
         }
-
-        private void handleConfirmLeave(Player player, String input, Object context)
-        {
-            if (!input.equalsIgnoreCase("confirm"))
-            {
-                player.sendMessage(ChatColor.YELLOW + "已取消离开公会");
-                Bukkit.getScheduler().runTask(plugin, () -> GuildGUI.openGUI(plugin, player));
-                return;
-            }
-            String guildName = (String) context;
-            if (plugin.getGuildManager().leaveGuild(player.getUniqueId()))
-            {
-                player.sendMessage(ChatColor.GREEN + "你已成功离开公会");
-            }
-            else
-            {
-                player.sendMessage(ChatColor.RED + "离开公会失败");
-            }
-            Bukkit.getScheduler().runTask(plugin, () -> GuildGUI.openGUI(plugin, player));
+    }
+    
+    public void addPendingInput(UUID uuid, ChatInput input) {
+        pendingInputs.put(uuid, input);
+    }
+    
+    public void removePendingInput(UUID uuid) {
+        pendingInputs.remove(uuid);
+    }
+    
+    public static class ChatInput {
+        private final InputType type;
+        private final Guild guild;
+        private final UUID targetUuid;
+        private final long expireTime;
+        
+        public ChatInput(InputType type, Guild guild, UUID targetUuid) {
+            this.type = type;
+            this.guild = guild;
+            this.targetUuid = targetUuid;
+            this.expireTime = System.currentTimeMillis() + 60000;
         }
-
-        private void handleConfirmDisband(Player player, String input, Object context)
-        {
-            if (!input.equalsIgnoreCase("confirm"))
-            {
-                player.sendMessage(ChatColor.YELLOW + "已取消解散公会");
-                Bukkit.getScheduler().runTask(plugin, () -> GuildGUI.openGUI(plugin, player));
-                return;
-            }
-            String guildName = (String) context;
-            if (plugin.getGuildManager().disbandGuild(guildName, player.getUniqueId()))
-            {
-                player.sendMessage(ChatColor.GREEN + "公会已成功解散");
-            }
-            else
-            {
-                player.sendMessage(ChatColor.RED + "解散公会失败");
-            }
-            Bukkit.getScheduler().runTask(plugin, () -> GuildGUI.openGUI(plugin, player));
+        
+        public InputType getType() {
+            return type;
         }
-
-        public static class PendingChatAction
-        {
-            private final String actionType;
-
-            private final Object context;
-
-            public PendingChatAction(String actionType, Object context)
-            {
-                this.actionType = actionType;
-                this.context = context;
-            }
-
-            public String getActionType()
-            {
-                return actionType;
-            }
-
-            public Object getContext()
-            {
-                return context;
-            }}
-
+        
+        public Guild getGuild() {
+            return guild;
         }
+        
+        public UUID getTargetUuid() {
+            return targetUuid;
+        }
+        
+        public long getExpireTime() {
+            return expireTime;
+        }
+    }
+    
+    public enum InputType {
+        RENAME_GUILD,
+        CHANGE_TAG,
+        SET_NICKNAME,
+        PROMOTE_MEMBER,
+        DEMOTE_MEMBER,
+        CONFIRM_DISBAND,
+        CONFIRM_KICK
+    }
+}

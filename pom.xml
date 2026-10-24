@@ -6,37 +6,29 @@
 
     <groupId>com.guild</groupId>
     <artifactId>Guild</artifactId>
-    <version>3.0.7</version>
+    <version>2.0.1</version>
     <packaging>jar</packaging>
 
     <name>Guild</name>
-    <description>功能全面的公会管理插件，原生兼容 1.8 ~ 26.1+</description>
+    <description>一个功能完善的公会插件，支持1.8.8至1.21.1所有版本，兼容Spigot、Paper等服务端核心</description>
 
     <properties>
-        <!-- 编译目标：Java 8（兼容所有主流 MC 版本的服务端 JRE） -->
-        <java.version>1.8</java.version>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.release>21</maven.compiler.release>
     </properties>
 
     <repositories>
-        <!-- Spigot API -->
         <repository>
             <id>spigot-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
         </repository>
-        <!-- Paper API -->
-        <repository>
-            <id>paper-repo</id>
-            <url>https://repo.papermc.io/repository/maven-public/</url>
-        </repository>
-        <!-- JitPack（PlayerPoints 等）-->
         <repository>
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
         </repository>
-        <!-- PlaceholderAPI 官方仓库 -->
         <repository>
             <id>placeholderapi</id>
             <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
@@ -44,34 +36,23 @@
     </repositories>
 
     <dependencies>
-        <!-- Paper API（1.21.4 作为编译基线，运行时兼容全版本） -->
         <dependency>
-            <groupId>io.papermc.paper</groupId>
-            <artifactId>paper-api</artifactId>
-            <version>1.21.4-R0.1-SNAPSHOT</version>
+            <groupId>org.spigotmc</groupId>
+            <artifactId>spigot-api</artifactId>
+            <version>1.21.1-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
-
-        <!--
-          HikariCP 连接池
-          注意：使用 4.x 最后一个支持 Java 8 的版本（5.x 需要 Java 11+）
-          scope=compile：通过 shade 插件打包进 JAR，不依赖外部提供
-        -->
         <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
-            <version>4.0.3</version>
+            <version>5.1.0</version>
         </dependency>
-
-        <!-- PlaceholderAPI（可选依赖，scope=provided 不打包进 JAR） -->
         <dependency>
             <groupId>me.clip</groupId>
             <artifactId>placeholderapi</artifactId>
             <version>2.11.6</version>
             <scope>provided</scope>
         </dependency>
-
-        <!-- Lombok / JetBrains Annotations（仅编译时使用） -->
         <dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>
@@ -82,89 +63,25 @@
 
     <build>
         <plugins>
-            <!-- 编译器插件 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <source>${maven.compiler.source}</source>
-                    <target>${maven.compiler.target}</target>
-                    <!-- Java 8 编译时不使用模块系统 -->
-                    <excludes>
-                        <exclude>module-info.java</exclude>
-                    </excludes>
+                    <source>21</source>
+                    <target>21</target>
                 </configuration>
             </plugin>
-
-            <!-- JAR 打包插件 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.4.1</version>
-                <configuration>
-                    <finalName>${project.name}-${project.version}</finalName>
-                </configuration>
-            </plugin>
-
-            <!--
-              Shade 插件：将 HikariCP 等运行时依赖打包进 JAR 并重定位包名，
-              避免与其他插件的同类库产生冲突
-            -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.6.0</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals><goal>shade</goal></goals>
-                        <configuration>
-                            <relocations>
-                                <!-- 将 HikariCP 重定位到插件私有包下 -->
-                                <relocation>
-                                    <pattern>com.zaxxer.hikari</pattern>
-                                    <shadedPattern>com.guild.lib.hikari</shadedPattern>
-                                </relocation>
-                            </relocations>
-                            <!-- 禁用最小化，避免 ART 重映射冲突 -->
-                            <minimizeJar>false</minimizeJar>
-                            <!-- 创建 shade 产物摘要文件（调试用） -->
-                            <createDependencyReducedPom>false</createDependencyReducedPom>
-                            <!-- 排除可能导致 ART 冲突的文件 -->
-                            <filters>
-                                <filter>
-                                    <artifact>*:*</artifact>
-                                    <excludes>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
-                                        <exclude>META-INF/versions/**</exclude>
-                                        <exclude>module-info.class</exclude>
-                                    </excludes>
-                                </filter>
-                            </filters>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- 资源文件过滤（支持 Maven 变量替换） -->
-            <plugin>
-                <groupId>org.apache.maven.resources</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>3.3.1</version>
             </plugin>
         </plugins>
-
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>true</filtering>
-                <!-- 排除 IDE 生成文件 -->
-                <excludes>
-                    <exclude>.gitkeep</exclude>
-                </excludes>
             </resource>
         </resources>
     </build>

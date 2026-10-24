@@ -1,4 +1,5 @@
 package com.guild.gui;
+
 import com.guild.GuildPlugin;
 import com.guild.guild.Guild;
 import com.guild.guild.GuildMember;
@@ -6,165 +7,308 @@ import com.guild.guild.GuildRole;
 import com.guild.utils.VersionCompat;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.OfflinePlayer;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
-public class GuildGUI
-{
-    public static void openGUI(GuildPlugin plugin, Player player)
-    {
+public class GuildGUI {
+    
+    public static void openGUI(GuildPlugin plugin, Player player) {
         Guild guild = plugin.getGuildManager().getPlayerGuild(player.getUniqueId());
-        if (guild == null)
-        {
+        
+        if (guild == null) {
             openNoGuildGUI(plugin, player);
-        }
-        else
-        {
+        } else {
             GuildMember member = guild.getMember(player.getUniqueId());
-            switch (member.getRole())
-            {
-                case OWNER: openOwnerGUI(plugin, player, guild);
-                break;
-                case OFFICER: openOfficerGUI(plugin, player, guild);
-                break;
-                default: openMemberGUI(plugin, player, guild);
-                break;
-            }}
-
+            if (member.getRole() == GuildRole.OWNER) {
+                openOwnerGUI(plugin, player, guild);
+            } else if (member.getRole() == GuildRole.OFFICER) {
+                openOfficerGUI(plugin, player, guild);
+            } else {
+                openMemberGUI(plugin, player, guild);
+            }
         }
-
-        private static void openNoGuildGUI(GuildPlugin plugin, Player player)
-        {
-            Inventory inv = Bukkit.createInventory( new SimpleGuildGUIHolder("main"), 27, GuiBuilder.color("&6&l公 会 系 统"));
-            GuiBuilder.drawDoubleBorder(inv, 3, GuiBuilder.BORDER_MATERIAL, GuiBuilder.GOLD_BORDER_MATERIAL);
-            inv.setItem(13, GuiBuilder.noGuildBarrier());
-            inv.setItem(11, GuiBuilder.createGuildButton());
-            inv.setItem(15, GuiBuilder.viewAllGuildsButton());
-            GuiBuilder.fillEmpty(inv, 27);
-            player.openInventory(inv);
+    }
+    
+    private static void openNoGuildGUI(GuildPlugin plugin, Player player) {
+        int size = plugin.getGUIConfig().getMainSize();
+        String title = plugin.getGUIConfig().getNoGuildTitle();
+        Inventory inv = Bukkit.createInventory(null, size, title);
+        
+        ItemStack barrier = createItem(VersionCompat.getBarrierMaterial(), 
+                plugin.getGUIConfig().getNoGuildBarrierName(), 
+                plugin.getGUIConfig().getNoGuildBarrierLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getNoGuildBarrierSlot(), barrier);
+        
+        ItemStack create = createItem(VersionCompat.getDiamondMaterial(), 
+                plugin.getGUIConfig().getCreateName(), 
+                plugin.getGUIConfig().getCreateLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getCreateSlot(), create);
+        
+        ItemStack list = createItem(VersionCompat.getBookMaterial(), 
+                plugin.getGUIConfig().getViewAllName(), 
+                plugin.getGUIConfig().getViewAllLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getViewAllSlot(), list);
+        
+        player.openInventory(inv);
+    }
+    
+    private static void openMemberGUI(GuildPlugin plugin, Player player, Guild guild) {
+        String title = plugin.getGUIConfig().getMemberTitle(guild.getName());
+        Inventory inv = Bukkit.createInventory(null, 54, title);
+        
+        ItemStack info = createItem(VersionCompat.getPaperMaterial(), 
+                plugin.getGUIConfig().getInfoName(), 
+                plugin.getGUIConfig().getInfoLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getInfoSlot(), info);
+        
+        ItemStack members = createItem(VersionCompat.getPlayerHeadMaterial(), 
+                plugin.getGUIConfig().getMembersName(), 
+                plugin.getGUIConfig().getMembersLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getMembersSlot(), members);
+        
+        ItemStack settings = createItem(VersionCompat.getRedstoneMaterial(), 
+                plugin.getGUIConfig().getSettingsName(), 
+                plugin.getGUIConfig().getSettingsLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getSettingsSlot(), settings);
+        
+        ItemStack bank = createItem(VersionCompat.getGoldIngotMaterial(),
+                plugin.getGUIConfig().getBankName(),
+                plugin.getGUIConfig().getBankLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getBankSlot(), bank);
+        
+        ItemStack leave = createItem(VersionCompat.getBarrierMaterial(), 
+                plugin.getGUIConfig().getLeaveName(), 
+                plugin.getGUIConfig().getLeaveLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getLeaveSlot(), leave);
+        
+        ItemStack inviteToggle = createItem(VersionCompat.getLeverMaterial(), 
+                plugin.getGUIConfig().getInviteToggleName(), 
+                plugin.getGUIConfig().getInviteToggleLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getInviteToggleSlot(), inviteToggle);
+        
+        ItemStack notifyToggle = createItem(VersionCompat.getNoteBlockMaterial(), 
+                plugin.getGUIConfig().getNotifyToggleName(), 
+                plugin.getGUIConfig().getNotifyToggleLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getNotifyToggleSlot(), notifyToggle);
+        
+        int slot = 45;
+        for (GuildMember member : guild.getMembers().values()) {
+            Player p = Bukkit.getPlayer(member.getUuid());
+            boolean online = p != null && p.isOnline();
+            String status = online ? ChatColor.GREEN + "在线" : ChatColor.RED + "离线";
+            String displayName = member.getNickname() != null ? member.getNickname() : Bukkit.getOfflinePlayer(member.getUuid()).getName();
+            
+            ItemStack memberItem = VersionCompat.createPlayerHead(member.getUuid(), 
+                    member.getRole().getColor() + displayName,
+                    ChatColor.GRAY + "职位: " + member.getRole().getDisplayName(),
+                    ChatColor.GRAY + "状态: " + status);
+            
+            inv.setItem(slot, memberItem);
+            slot++;
+            if (slot > 53) break;
         }
-
-        private static void openMemberGUI(GuildPlugin plugin, Player player, Guild guild)
-        {
-            Inventory inv = Bukkit.createInventory( new SimpleGuildGUIHolder("main"), 54, GuiBuilder.color("&6公会: &e" + guild.getName()));
-            fillCommonLayout(inv, player, guild, false);
-            fillMemberList(inv, guild);
-            player.openInventory(inv);
+        
+        player.openInventory(inv);
+    }
+    
+    private static void openOfficerGUI(GuildPlugin plugin, Player player, Guild guild) {
+        String title = plugin.getGUIConfig().getOfficerTitle(guild.getName());
+        Inventory inv = Bukkit.createInventory(null, 54, title);
+        
+        ItemStack info = createItem(VersionCompat.getPaperMaterial(), 
+                plugin.getGUIConfig().getInfoName(), 
+                plugin.getGUIConfig().getInfoLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getInfoSlot(), info);
+        
+        ItemStack members = createItem(VersionCompat.getPlayerHeadMaterial(), 
+                plugin.getGUIConfig().getMembersName(), 
+                plugin.getGUIConfig().getMembersLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getMembersSlot(), members);
+        
+        ItemStack settings = createItem(VersionCompat.getRedstoneMaterial(), 
+                plugin.getGUIConfig().getSettingsName(), 
+                plugin.getGUIConfig().getSettingsLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getSettingsSlot(), settings);
+        
+        ItemStack manage = createItem(VersionCompat.getCommandBlockMaterial(), 
+                plugin.getGUIConfig().getManageName(), 
+                plugin.getGUIConfig().getManageLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getManageSlot(), manage);
+        
+        ItemStack bank = createItem(VersionCompat.getGoldIngotMaterial(),
+                plugin.getGUIConfig().getBankName(), 
+                plugin.getGUIConfig().getBankLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getBankSlot(), bank);
+        
+        ItemStack leave = createItem(VersionCompat.getBarrierMaterial(), 
+                plugin.getGUIConfig().getLeaveName(), 
+                plugin.getGUIConfig().getLeaveLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getLeaveSlot(), leave);
+        
+        ItemStack inviteToggle = createItem(VersionCompat.getLeverMaterial(), 
+                plugin.getGUIConfig().getInviteToggleName(), 
+                plugin.getGUIConfig().getInviteToggleLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getInviteToggleSlot(), inviteToggle);
+        
+        ItemStack notifyToggle = createItem(VersionCompat.getNoteBlockMaterial(), 
+                plugin.getGUIConfig().getNotifyToggleName(), 
+                plugin.getGUIConfig().getNotifyToggleLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getNotifyToggleSlot(), notifyToggle);
+        
+        int slot = 45;
+        for (GuildMember member : guild.getMembers().values()) {
+            Player p = Bukkit.getPlayer(member.getUuid());
+            boolean online = p != null && p.isOnline();
+            String status = online ? ChatColor.GREEN + "在线" : ChatColor.RED + "离线";
+            String displayName = member.getNickname() != null ? member.getNickname() : Bukkit.getOfflinePlayer(member.getUuid()).getName();
+            
+            ItemStack memberItem = VersionCompat.createPlayerHead(member.getUuid(), 
+                    member.getRole().getColor() + displayName,
+                    ChatColor.GRAY + "职位: " + member.getRole().getDisplayName(),
+                    ChatColor.GRAY + "状态: " + status);
+            
+            inv.setItem(slot, memberItem);
+            slot++;
+            if (slot > 53) break;
         }
-
-        private static void openOfficerGUI(GuildPlugin plugin, Player player, Guild guild)
-        {
-            Inventory inv = Bukkit.createInventory( new SimpleGuildGUIHolder("main"), 54, GuiBuilder.color("&6公会管理: &e" + guild.getName()));
-            fillCommonLayout(inv, player, guild, true);
-            fillMemberList(inv, guild);
-            player.openInventory(inv);
+        
+        player.openInventory(inv);
+    }
+    
+    private static void openOwnerGUI(GuildPlugin plugin, Player player, Guild guild) {
+        String title = plugin.getGUIConfig().getOwnerTitle(guild.getName());
+        Inventory inv = Bukkit.createInventory(null, 54, title);
+        
+        ItemStack info = createItem(VersionCompat.getPaperMaterial(), 
+                plugin.getGUIConfig().getInfoName(), 
+                plugin.getGUIConfig().getInfoLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getInfoSlot(), info);
+        
+        ItemStack members = createItem(VersionCompat.getPlayerHeadMaterial(), 
+                plugin.getGUIConfig().getMembersName(), 
+                plugin.getGUIConfig().getMembersLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getMembersSlot(), members);
+        
+        ItemStack settings = createItem(VersionCompat.getRedstoneMaterial(), 
+                plugin.getGUIConfig().getSettingsName(), 
+                plugin.getGUIConfig().getSettingsLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getSettingsSlot(), settings);
+        
+        ItemStack manage = createItem(VersionCompat.getCommandBlockMaterial(), 
+                plugin.getGUIConfig().getManageName(), 
+                plugin.getGUIConfig().getManageLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getManageSlot(), manage);
+        
+        ItemStack bank = createItem(VersionCompat.getGoldIngotMaterial(),
+                plugin.getGUIConfig().getBankName(), 
+                plugin.getGUIConfig().getBankLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getBankSlot(), bank);
+        
+        ItemStack upgrade = createItem(VersionCompat.getEmeraldMaterial(),
+                ChatColor.GREEN + "升级公会",
+                ChatColor.GRAY + "当前等级: " + guild.getLevel(),
+                ChatColor.GRAY + "升级所需: " + plugin.getGuildCurrency().formatAmount(
+                    plugin.getCurrencyConfig().getLevelUpCost(), 
+                    plugin.getCurrencyConfig().getCurrencyType()),
+                ChatColor.YELLOW + "点击升级公会");
+        inv.setItem(plugin.getGUIConfig().getUpgradeSlot(), upgrade);
+        
+        ItemStack buyExp = createItem(VersionCompat.getExperienceBottleMaterial(),
+                ChatColor.AQUA + "购买经验",
+                ChatColor.GRAY + "获得: " + plugin.getCurrencyConfig().getExperienceAmount() + " 经验",
+                ChatColor.GRAY + "所需: " + plugin.getGuildCurrency().formatAmount(
+                    plugin.getCurrencyConfig().getExperienceCost(),
+                    plugin.getCurrencyConfig().getCurrencyType()),
+                ChatColor.YELLOW + "点击购买经验");
+        inv.setItem(plugin.getGUIConfig().getBuyExpSlot(), buyExp);
+        
+        ItemStack leave = createItem(VersionCompat.getBarrierMaterial(), 
+                plugin.getGUIConfig().getLeaveName(), 
+                plugin.getGUIConfig().getLeaveLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getLeaveSlot(), leave);
+        
+        ItemStack inviteToggle = createItem(VersionCompat.getLeverMaterial(), 
+                plugin.getGUIConfig().getInviteToggleName(), 
+                plugin.getGUIConfig().getInviteToggleLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getInviteToggleSlot(), inviteToggle);
+        
+        ItemStack notifyToggle = createItem(VersionCompat.getNoteBlockMaterial(), 
+                plugin.getGUIConfig().getNotifyToggleName(), 
+                plugin.getGUIConfig().getNotifyToggleLore().toArray(new String[0]));
+        inv.setItem(plugin.getGUIConfig().getNotifyToggleSlot(), notifyToggle);
+        
+        int slot = 45;
+        for (GuildMember member : guild.getMembers().values()) {
+            Player p = Bukkit.getPlayer(member.getUuid());
+            boolean online = p != null && p.isOnline();
+            String status = online ? ChatColor.GREEN + "在线" : ChatColor.RED + "离线";
+            String displayName = member.getNickname() != null ? member.getNickname() : Bukkit.getOfflinePlayer(member.getUuid()).getName();
+            
+            ItemStack memberItem = VersionCompat.createPlayerHead(member.getUuid(), 
+                    member.getRole().getColor() + displayName,
+                    ChatColor.GRAY + "职位: " + member.getRole().getDisplayName(),
+                    ChatColor.GRAY + "状态: " + status);
+            
+            inv.setItem(slot, memberItem);
+            slot++;
+            if (slot > 53) break;
         }
-
-        private static void openOwnerGUI(GuildPlugin plugin, Player player, Guild guild)
-        {
-            Inventory inv = Bukkit.createInventory( new SimpleGuildGUIHolder("main"), 54, GuiBuilder.color("&6&l公会会长: &e" + guild.getName()));
-            fillCommonLayout(inv, player, guild, true);
-            String costStr = plugin.getGuildCurrency().formatAmount( plugin.getCurrencyConfig().getLevelUpCost(guild.getLevel()), plugin.getCurrencyConfig().getCurrencyType());
-            inv.setItem(19, GuiBuilder.upgradeButton(guild.getLevel(), costStr));
-            String expCost = plugin.getGuildCurrency().formatAmount( plugin.getCurrencyConfig().getExperienceCost(), plugin.getCurrencyConfig().getCurrencyType());
-            inv.setItem(25, GuiBuilder.buyExpButton(expCost, plugin.getCurrencyConfig().getExperienceAmount()));
-            fillMemberList(inv, guild);
-            player.openInventory(inv);
+        
+        player.openInventory(inv);
+    }
+    
+    private static ItemStack createItem(Material material, String name, String... lore) {
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName(name);
+        
+        if (lore.length > 0) {
+            List<String> loreList = new ArrayList<>();
+            for (String line : lore) {
+                loreList.add(line);
+            }
+            meta.setLore(loreList);
         }
-
-        public static void openGuildListGUI(GuildPlugin plugin, Player player)
-        {
-            Map<String, Guild> guilds = plugin.getGuildManager().getGuilds();
-            if (guilds.isEmpty())
-            {
-                player.sendMessage(ChatColor.RED + "服务器上没有公会");
-                return;
-            }
-            Inventory inv = Bukkit.createInventory( new SimpleGuildGUIHolder("list"), 54, GuiBuilder.color("&6&l所 有 公 会"));
-            GuiBuilder.drawBorder(inv, 6, GuiBuilder.DECORATION_MATERIAL);
-            int slot = 10;
-            for (Guild guild : guilds.values())
-            {
-                if (slot >= 44) break;
-                if (slot % 9 == 8)
-                {
-                    slot += 2;
-                }
-                if (slot >= 44) break;
-                inv.setItem(slot, createGuildDisplayItem(guild));
-                slot++;
-                if (slot % 9 == 8) slot++;
-            }
-            inv.setItem(49, GuiBuilder.backButton());
-            player.openInventory(inv);
+        
+        item.setItemMeta(meta);
+        return item;
+    }
+    
+    public static void openGuildListGUI(GuildPlugin plugin, Player player) {
+        if (plugin.getGuildManager().getGuilds().isEmpty()) {
+            player.sendMessage(ChatColor.RED + "服务器上没有公会");
+            return;
         }
-
-        private static void fillCommonLayout(Inventory inv, Player player, Guild guild, boolean showAdmin)
-        {
-            GuiBuilder.drawDoubleBorder(inv, 6, GuiBuilder.BORDER_MATERIAL, GuiBuilder.DECORATION_MATERIAL);
-            inv.setItem(10, GuiBuilder.infoButton("公会信息", GuiBuilder.COLOR_INFO + "等级: " + GuiBuilder.COLOR_SECONDARY + guild.getLevel(), GuiBuilder.COLOR_INFO + "成员: " + GuiBuilder.COLOR_SECONDARY + guild.getMembers().size() + "/" + guild.getMaxMembers(), GuiBuilder.COLOR_INFO + "经验: " + GuiBuilder.COLOR_SECONDARY + guild.getExperience() + "/" + guild.getRequiredExperience()));
-            inv.setItem(12, GuiBuilder.expProgressButton(guild.getExperience(), guild.getRequiredExperience(), guild.getLevel()));
-            inv.setItem(13, GuiBuilder.memberListButton( GuiBuilder.COLOR_INFO + "当前: " + guild.getMembers().size() + " 人"));
-            if (guild.getMotd() != null && !guild.getMotd().isEmpty())
-            {
-                inv.setItem(14, GuiBuilder.motdButton(guild.getMotd()));
-            }
-            inv.setItem(16, GuiBuilder.settingsButton());
-            inv.setItem(21, GuiBuilder.contributionButton(guild.getMember(player.getUniqueId()) != null ? guild.getMember(player.getUniqueId()).getTotalContribution() : 0L));
-            inv.setItem(22, GuiBuilder.bankButton(GuiBuilder.COLOR_INFO + "余额: &e" + guild.getBank().getBalance()));
-            inv.setItem(23, GuiBuilder.shopButton(guild.getLevel()));
-            if (showAdmin)
-            {
-                inv.setItem(28, GuiBuilder.manageButton());
-            }
-            else
-            {
-                inv.setItem(28, createToggleButton("邀请设置", "&7点击切换是否接受邀请"));
-            }
-            inv.setItem(34, createToggleButton("上下线通知", "&7点击切换上线/下线通知"));
-            GuiBuilder.drawGradientLine(inv, 3, GuiBuilder.BORDER_MATERIAL, GuiBuilder.GOLD_BORDER_MATERIAL);
-            inv.setItem(31, GuiBuilder.leaveButton());
-            GuiBuilder.fillEmpty(inv, 54);
+        
+        int size = plugin.getGUIConfig().getAllGuildsSize();
+        String title = plugin.getGUIConfig().getAllGuildsTitle();
+        Inventory inv = Bukkit.createInventory(null, size, title);
+        
+        int slot = 0;
+        for (Guild guild : plugin.getGuildManager().getGuilds().values()) {
+            ItemStack guildItem = createItem(VersionCompat.getDiamondBlockMaterial(), 
+                    ChatColor.YELLOW + guild.getName(),
+                    ChatColor.GRAY + "等级: " + guild.getLevel(),
+                    ChatColor.GRAY + "成员: " + guild.getMembers().size() + "/" + guild.getMaxMembers(),
+                    ChatColor.GRAY + "经验: " + guild.getExperience(),
+                    ChatColor.GRAY + "标签: " + (guild.getTag() != null ? guild.getTag() : ChatColor.RED + "无"));
+            
+            inv.setItem(slot, guildItem);
+            slot++;
+            if (slot > 44) break;
         }
-
-        private static void fillMemberList(Inventory inv, Guild guild)
-        {
-            int slot = 45;
-            for (Map.Entry<UUID, GuildMember> entry : guild.getMembers().entrySet())
-            {
-                if (slot > 53) break;
-                UUID uuid = entry.getKey();
-                GuildMember member = entry.getValue();
-                boolean online = isPlayerOnline(uuid);
-                String statusColor = online ? "&a在线" : "&c离线";
-                String displayName = member.getNickname() != null ? member.getNickname() : getPlayerName(uuid);
-                inv.setItem(slot, VersionCompat.createPlayerHead(uuid, GuiBuilder.color(member.getRole().getColor() + displayName), GuiBuilder.color(GuiBuilder.COLOR_INFO + "职位: " + member.getRole().getDisplayName()), GuiBuilder.color(GuiBuilder.COLOR_INFO + "状态: " + statusColor)));
-                slot++;
-            }}
-
-            private static ItemStack createGuildDisplayItem(Guild guild)
-            {
-                return GuiBuilder.createItem(VersionCompat.getDiamondBlockMaterial(), GuiBuilder.COLOR_PRIMARY + guild.getName(), GuiBuilder.COLOR_INFO + "等级: " + GuiBuilder.COLOR_SECONDARY + guild.getLevel(), GuiBuilder.COLOR_INFO + "成员: " + GuiBuilder.COLOR_SECONDARY + guild.getMembers().size() + "/" + guild.getMaxMembers(), GuiBuilder.COLOR_INFO + "经验: " + GuiBuilder.COLOR_SECONDARY + guild.getExperience(), GuiBuilder.COLOR_INFO + "标签: " + (guild.getTag() != null ? GuiBuilder.COLOR_YELLOW + guild.getTag() : GuiBuilder.COLOR_DANGER + "无"));
-            }
-
-            private static ItemStack createToggleButton(String name, String... lore)
-            {
-                return GuiBuilder.createItem(VersionCompat.getLeverMaterial(), GuiBuilder.COLOR_SECONDARY + name, lore);
-            }
-
-            private static boolean isPlayerOnline(UUID uuid)
-            {
-                Player p = Bukkit.getPlayer(uuid);
-                return p != null && p.isOnline();
-            }
-
-            private static String getPlayerName(UUID uuid)
-            {
-                OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
-                return op.getName() != null ? op.getName() : "未知";
-            }}
+        
+        ItemStack back = createItem(VersionCompat.getArrowMaterial(), 
+                plugin.getGUIConfig().getBackName(), 
+                plugin.getGUIConfig().getBackLore().toArray(new String[0]));
+        inv.setItem(49, back);
+        
+        player.openInventory(inv);
+    }
+}

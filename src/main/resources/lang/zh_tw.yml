@@ -1,85 +1,18 @@
-# ============================================================
-#  Guild 插件語言包 - 繁體中文
-#  格式: key: value（每行一個鍵值對）
-# ============================================================
+plugin:
+  enabling: 正在啟用 Guild
+  enabled: Guild 插件已啟用!
+  disabling: 正在禁用 Guild
+  disabled: Guild 插件已禁用!
+  author: 作者: GuildPlugin
+  version: v1.7.0
 
-plugin.enabling: 正在啟用 Guild
-plugin.enabled: Guild 插件已啟用!
-plugin.disabling: 正在停用 Guild
-plugin.disabled: Guild 插件已停用!
-plugin.author: 作者: ya_xzer21145
-plugin.version: v3.0.4
-
-guild.created: "&a成功創建公會: %name%"
-guild.deleted: "&c公會已解散"
-guild.joined: "&a你已加入公會"
-guild.left: "&a你已離開公會"
-guild.already-in-guild: "&c你已經在公會中了"
-guild.not-in-guild: "&c你不在任何公會中"
-guild.no-permission: "&c你沒有權限執行此操作"
-guild.guild-not-found: "&c未找到該公會"
-guild.player-not-found: "&c未找到該玩家"
-guild.name-exists: "&c該公會名稱已被使用"
-guild.name-length-invalid: "&c公會名稱長度必須在 %min% 到 %max% 個字符之間"
-guild.name-chars-invalid: "&c公會名稱包含非法字符"
-guild.tag-length-invalid: "&c標籤長度不能超過 %max% 個字符"
-guild.tag-updated: "&a公會標籤已更新為: &e%tag%"
-guild.motd-too-long: "&c公告內容過長"
-guild.motd-updated: "&a公會公告已更新"
-guild.already-exists: "&c該名稱已被使用"
-
-member.promoted: "&a你已被提升為 &e%role%"
-member.demoted: "&a你已被降級為 &e%role%"
-member.kicked: "&c你已被踢出公會"
-member.promoted-other: "&a%player% 已被提升為 &e%role%"
-member.demoted-other: "&a%player% 已被降級為 &e%role%"
-member.kicked-other: "&a%player% 已被踢出公會"
-member.transferred: "&a會長職位已轉讓給 &e%player%"
-
-guild.join-request: "&6%player% 申請加入你的公會，使用 /guild accept %name% 接受"
-invite.sent: "&a邀請已發送給 &e%player%"
-invite.not-found: "&c未找到該玩家的邀請申請"
-invite.no-pending: "&c沒有待處理的邀請/申請"
-
-chat.format: "&8[&6公會&8] &f%player%&7: &f%message%"
-chat.officer-format: "&8[&c管理&8] &f%player%&7: &f%message%"
-chat.muted: "&c你已被禁言，無法在公會頻道發言"
-
-bank.invalid-amount: "&c請輸入有效金額"
-bank.amount-positive: "&c金額必須大於零"
-bank.deposit-success: "&a成功存入 &e%amount% 公會幣"
-bank.deposit-failed: "&c存入失敗，餘額不足"
-bank.withdraw-success: "&a成功取出 &e%amount% 公會幣"
-bank.withdraw-failed: "&c取出失敗，銀行餘額不足"
-bank.balance: "&6公會銀行餘額: &e%balance%"
-
-guild.level-up: "&a公會升級成功！當前等級: &e%level%"
-guild.upgrade-failed: "&c升級失敗，資金不足"
-guild.exp-purchased: "&a成功購買 &e%amount% 點經驗值"
-guild.purchase-failed: "&c購買失敗，資金不足"
-
-error.command-only-player: "&c此命令只能由玩家執行"
-error.invalid-arguments: "&c參數錯誤，使用 /guild help 查看幫助"
-error.cannot-leave-as-owner: "&c會長不能離開公會，請先轉讓會長或解散公會"
-error.cannot-kick-higher-role: "&c你不能踢出比你職位高的成員"
-error.cannot-promote-higher-role: "&c你不能提升比你職位高的成員"
-error.cannot-demote-higher-role: "&c你不能降級比你職位高的成員"
-error.player-not-in-guild: "&c該玩家不在你的公會中"
-
-gui.title.main: "&6公會系統"
-gui.title.no-guild: "&6&l創建或加入公會"
-gui.title.all-guilds: "&6所有公會"
-gui.title.member: "&6公會: &e%name%"
-gui.title.bank: "&6公會銀行: &e%name%"
-gui.item.create: "&a創建公會"
-gui.item.view-all: "&e查看所有公會"
-gui.item.back: "&c返回"
-gui.item.info: "&e公會資訊"
-gui.item.members: "&e成員列表"
-gui.item.settings: "&e個人設置"
-gui.item.leave: "&c離開公會"
-gui.item.manage: "&c管理公會"
-gui.item.upgrade: "&a升級公會"
-gui.item.buy-exp: "&b購買經驗"
-gui.item.deposit: "&a存入資金"
-gui.item.withdraw: "&c取出資金"
+guild:
+  created: 公會創建成功
+  deleted: 公會刪除成功
+  joined: 你已加入公會
+  left: 你已離開公會
+  already_in_guild: 你已經在公會中了
+  not_in_guild: 你不在任何公會中
+  no_permission: 你沒有權限
+  guild_not_found: 公會不存在
+  player_not_found: 玩家不存在

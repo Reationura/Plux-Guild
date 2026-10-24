@@ -1,52 +1,44 @@
 package com.guild.guild;
+
 import java.util.UUID;
 
-public class PlayerSettings
-{
+public class PlayerSettings {
+    
     private final UUID playerUuid;
-
     private boolean allowInvites;
-
     private boolean notifyOnlineStatus;
-
-    public PlayerSettings(UUID uUID)
-    {
-        this.playerUuid = uUID;
+    
+    public PlayerSettings(UUID playerUuid) {
+        this.playerUuid = playerUuid;
         this.allowInvites = true;
         this.notifyOnlineStatus = true;
     }
-
-    public UUID getPlayerUuid()
-    {
-        return this.playerUuid;
+    
+    public UUID getPlayerUuid() {
+        return playerUuid;
     }
-
-    public boolean isAllowInvites()
-    {
-        return this.allowInvites;
+    
+    public boolean isAllowInvites() {
+        return allowInvites;
     }
-
-    public void setAllowInvites(boolean bl)
-    {
-        this.allowInvites = bl;
+    
+    public void setAllowInvites(boolean allowInvites) {
+        this.allowInvites = allowInvites;
     }
-
-    public boolean isNotifyOnlineStatus()
-    {
-        return this.notifyOnlineStatus;
+    
+    public boolean isNotifyOnlineStatus() {
+        return notifyOnlineStatus;
     }
-
-    public void setNotifyOnlineStatus(boolean bl)
-    {
-        this.notifyOnlineStatus = bl;
+    
+    public void setNotifyOnlineStatus(boolean notifyOnlineStatus) {
+        this.notifyOnlineStatus = notifyOnlineStatus;
     }
-
-    public void toggleInvites()
-    {
-        this.allowInvites = ! this.allowInvites;
+    
+    public void toggleInvites() {
+        this.allowInvites = !this.allowInvites;
     }
-
-    public void toggleNotify()
-    {
-        this.notifyOnlineStatus = ! this.notifyOnlineStatus;
-    }}
+    
+    public void toggleNotify() {
+        this.notifyOnlineStatus = !this.notifyOnlineStatus;
+    }
+}

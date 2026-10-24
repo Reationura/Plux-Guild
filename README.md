@@ -1,234 +1,186 @@
-# Guild
+# Guild 公会插件
 
-> 功能全面的 Minecraft 公会管理插件 - 支持 GUI/等级经验/银行系统/聊天频道/多货币 | 兼容 1.8 ~ 26.1+
+**一个功能完善的公会系统，支持全版本Minecraft服务器**
 
-![Java](https://img.shields.io/badge/Java-8-blue)
-![Folia](https://img.shields.io/badge/Folia-supported-green)
+---
 
-## 功能特性
+## 📋 简介
 
-- 🏰 **公会系统** - 完整的公会创建、管理、解散功能
-- 🖥️ **GUI 界面** - 可视化操作界面，聊天输入创建公会，无需记忆命令
-- 📊 **等级系统** - 公会最高 100 级，等级提升解锁更多成员上限
-- ⚡ **经验系统** - 击杀怪物、挖掘方块、PVP 均可获取公会经验
-- 🏦 **银行系统** - 公会成员存取资金，支持内置币/Vault/PlayerPoints
-- 💬 **聊天频道** - 独立公会聊天频道，支持格式化前缀
-- 🏷️ **标签系统** - 自定义公会标签，支持颜色代码
-- 📝 **公告系统** - 公会 MOTD 公告显示
-- 👥 **角色权限** - 会长 / 管理员 / 成员 三级权限体系
-- 📩 **邀请系统** - 邀请玩家加入公会，支持过期验证
-- 📱 **上下线通知** - 成员上线/下线自动广播
-- 🌐 **多语言** - 内置简体中文、繁体中文、英文三套语言包
-- 📈 **排行榜** - 公会等级经验排行榜
-- 💾 **多数据库支持** - 同时支持 SQLite 和 MySQL
-- ⚡ **高性能** - 使用 HikariCP 连接池和 ConcurrentHashMap 保证线程安全
+Guild 是一款功能强大、兼容性极佳的公会插件，为您的服务器提供完整的公会系统。无论是小型生存服还是大型RPG服，Guild 都能完美适配。
 
-## 兼容版本
+---
 
-- Minecraft 1.8 ~ 1.26.1+
-- 支持 Folia 服务端
-- 支持 Spigot / Paper / Purpur 等主流服务端
+## ✨ 主要特性
 
-## 软依赖
+### 🌟 全版本支持
+- ✅ **支持版本**: 1.8.8 - 1.21.1
+- ✅ **支持服务端**: Spigot、Paper、Purpur 及所有分支
+- ✅ **自动适配**: 插件自动检测服务器版本并应用兼容代码
 
-| 插件 | 作用 |
+### 🎮 核心功能
+| 功能 | 描述 |
 |------|------|
-| Vault | 经济系统支持（可选） |
-| PlaceholderAPI | 变量支持（可选） |
-| ProtocolLib | 协议库支持（可选） |
+| 🏰 **公会创建** | 玩家可自由创建公会，自定义名称和标签 |
+| 👥 **成员管理** | 支持会长、管理员、成员三级权限体系 |
+| 💬 **公会聊天** | 独立的公会聊天频道和管理频道 |
+| 📊 **等级系统** | 公会可通过积累经验升级，解锁更多成员上限 |
+| 🏷️ **公会标签** | 支持自定义标签和颜色，显示在聊天中 |
+| 📢 **公会公告** | 会长和管理员可设置公会公告(MOTD) |
+| 🖥️ **GUI界面** | 美观的图形界面，操作便捷 |
+| 🔔 **通知系统** | 成员上下线通知，可自由开关 |
+| 🚫 **邀请管理** | 可设置是否接受公会邀请 |
 
-## 快速开始
+### 🛠️ 管理功能
+- 公会转让、解散
+- 成员升职/降职
+- 踢出成员
+- 设置成员昵称
+- 公会重命名
+- 权限管理
 
-### 安装
+### 🔧 管理员功能
+- 强制删除公会
+- 给予公会经验
+- 设置公会等级
+- 重载配置文件
 
-1. 下载最新版本的 `Guild-3.0.1.jar`
-2. 将插件放入服务器的 `plugins` 文件夹
-3. 启动服务器，插件将自动生成配置文件
-4. 根据需要修改 `plugins/Guild/config.yml` 配置文件
-5. 执行 `/guild reload` 重载配置
+---
 
-### 编译
+## 📸 功能展示
 
-项目使用 Maven 构建：
+### GUI界面
+- 无公会界面：创建公会、查看所有公会
+- 成员界面：查看信息、成员列表、个人设置
+- 管理员界面：额外显示管理按钮
+- 会长界面：完整的公会管理权限
 
-```bash
-mvn clean package
+### 聊天系统
+```
+[公会标签] 玩家名: 消息内容      # 普通公会聊天
+[管理频道] 玩家名: 消息内容      # 管理员专属频道
 ```
 
-编译完成后，jar 文件位于 `target/` 目录下。
+---
 
-## 命令列表
+## 📝 指令列表
 
-### 玩家命令
+### 玩家指令
+| 指令 | 描述 |
+|------|------|
+| `/guild` 或 `/gh` | 打开公会GUI界面 |
+| `/guild help` | 查看帮助 |
+| `/guild create <名称> [标签]` | 创建公会 |
+| `/guild join <公会名>` | 申请加入公会 |
+| `/guild leave` | 离开公会 |
+| `/guild info` | 查看公会信息 |
+| `/guild list` | 查看公会成员列表 |
+| `/guild online` | 查看在线成员 |
+| `/guild invite <玩家>` | 邀请玩家加入 |
+| `/guild accept [玩家]` | 接受邀请/申请 |
+| `/guild decline` | 拒绝邀请 |
+| `/guild kick <玩家> [原因]` | 踢出成员 |
+| `/guild promote <玩家>` | 提升成员为管理员 |
+| `/guild demote <玩家>` | 降职成员为普通成员 |
+| `/guild transfer <玩家>` | 转让会长 |
+| `/guild disband` | 解散公会 |
+| `/guild tag <标签>` | 设置公会标签 |
+| `/guild tagcolor <颜色>` | 设置标签颜色 |
+| `/guild motd <内容>` | 设置公会公告 |
+| `/guild chat <消息>` | 发送公会聊天 |
+| `/guild officerchat <消息>` | 发送管理频道消息 |
+| `/guild top [页码]` | 查看贡献排行榜 |
+| `/guild requests [页码]` | 查看加入申请 |
+| `/guild member <玩家>` | 查看成员信息 |
+| `/guild settings` | 个人设置 |
+| `/guild party` | 向在线成员发起组队 |
+| `/guildgui` | 打开公会GUI |
+| `/guildchat <消息>` 或 `/gc` | 快捷公会聊天 |
 
-| 命令 | 别名 | 描述 | 用法 |
-|------|------|------|------|
-| `/guild` | `/gh` | 公会主指令 | `/guild <子命令>` |
-| `/guild create <名称> [标签]` | - | 创建公会 | `/guild create MyGuild TAG` |
-| `/guild info [公会名]` | - | 查看公会信息 | `/guild info MyGuild` |
-| `/guild invite <玩家>` | - | 邀请玩家 | `/guild invite PlayerName` |
-| `/guild kick <玩家>` | - | 踢出成员 | `/guild kick PlayerName` |
-| `/guild leave` | - | 离开公会 | `/guild leave` |
-| `/guild disband` | - | 解散公会 | `/guild disband` |
-| `/guild chat <消息>` | - | 公会频道发言 | `/guild chat Hello` |
-| `/guild deposit <金额>` | - | 存入银行 | `/guild deposit 1000` |
-| `/guild withdraw <金额>` | - | 取出银行 | `/guild withdraw 500` |
-| `/guild top` | - | 公会排行榜 | `/guild top` |
-| `/guild reload` | - | 重载配置 | `/guild reload` |
-| `/guildchat <消息>` | `/gc`, `/guildc` | 快捷公会聊天 | `/guildchat Hello` |
-| `/guildgui` | - | 打开 GUI 界面 | `/guildgui` |
+### 管理员指令
+| 指令 | 描述 |
+|------|------|
+| `/guild gexp <公会> <数量>` | 给予公会经验 |
+| `/guild slevel <公会> <等级>` | 设置公会等级 |
+| `/guild clxplev <公会>` | 清零公会等级和经验 |
+| `/guild delete <公会> confirm` | 强制删除公会 |
+| `/guild reload` | 重载配置文件 |
+| `/guild reload database` | 重载数据库 |
 
-### 管理员命令
+---
 
-| 命令 | 描述 | 用法 | 权限 |
-|------|------|------|------|
-| `/guild slevel <公会名> <等级>` | 设置公会等级 | `/guild slevel MyGuild 10` | op |
-| `/guild gexp <公会名> <数量>` | 给予公会经验 | `/guild gexp MyGuild 1000` | op |
-| `/guild clxplev <公会名>` | 清零等级经验 | `/guild clxplev MyGuild` | op |
-| `/guild delete <公会名>` | 强制删除公会 | `/guild delete MyGuild` | op |
-
-## 权限节点
-
-| 权限节点 | 描述 | 默认值 |
-|----------|------|--------|
-| `guild.*` | 所有公会权限 | op |
-| `guild.admin` | 管理员权限 | op |
-| `guild.player` | 基础玩家权限 | true |
-| `guild.create` | 创建公会 | true |
-| `guild.invite` | 邀请玩家加入公会 | op |
-| `guild.kick` | 踢出公会成员 | op |
-| `guild.promote` | 提升成员职位 | op |
-| `guild.demote` | 降低成员职位 | op |
-| `guild.disband` | 解散公会 | op |
-| `guild.upgrade` | 升级公会等级 | op |
-| `guild.bank` | 使用公会银行存取款 | true |
-| `guild.chat` | 在公会频道发言 | true |
-| `guild.manage` | 管理公会设置 | op |
-| `guild.settings` | 修改个人公会设置 | true |
-| `guild.info` | 查看公会信息 | true |
-
-## 配置说明
-
-### 货币配置
+## 🔐 权限节点
 
 ```yaml
-currency:
-  type: GUILD_COIN          # GUILD_COIN / VAULT / PLAYERPOINTS
-  level-up-cost: 100000     # 升级公会所需货币
-  experience-cost: 5000     # 购买经验消耗
-  experience-amount: 50     # 购买经验获得量
+guild.*          # 所有公会权限（OP默认）
+guild.admin      # 管理员权限
+guild.player     # 普通玩家权限（默认true）
 ```
 
-### 公会配置
+---
 
+## ⚙️ 配置文件
+
+### config.yml 主要配置项
 ```yaml
+# 语言设置
+language: zh_cn  # 支持: zh_cn, zh_tw, zh_hk, en_US, de_de, fr_fr, ja_jp
+
+# 公会设置
 guild:
-  max-level: 100           # 最高等级上限
-  members-per-level: 5     # 每级增加的最大成员数
-  default-tag-color: "&f"  # 默认标签颜色
-  min-name-length: 3       # 公会名称最短长度
-  max-name-length: 16      # 公会名称最长长度
-  max-tag-length: 4        # 标签最长长度
-  create-cost: 0           # 创建公会所需货币（0 = 免费）
-```
+  max-level: 100              # 最大等级
+  members-per-level: 5        # 每级增加成员数
+  min-name-length: 3          # 名称最小长度
+  max-name-length: 16         # 名称最大长度
+  max-tag-length: 4           # 标签最大长度
+  create-cost: 0              # 创建费用（支持Vault和PlayerPoints）
 
-### 经验获取配置
-
-```yaml
+# 经验获取设置
 experience:
-  monster-kill: 10    # 击杀怪物获得的经验值
-  block-break: 5      # 挖掘方块获得的经验值
-  block-place: 3      # 放置方块获得的经验值
-  player-kill: 50     # 击杀玩家获得的经验值
+  monster-kill: 10    # 击杀怪物
+  block-break: 5      # 挖掘方块
+  block-place: 3      # 放置方块
+  player-kill: 50     # 击杀玩家
 ```
 
-### 数据库配置
+---
 
-```yaml
-database:
-  type: sqlite          # sqlite 或 mysql
-  mysql:
-    host: localhost
-    port: 3306
-    database: guild
-    username: root
-    password: ""
-    pool-size: 10
-```
+## 🌍 多语言支持
 
-### 功能开关
+插件内置 **7种语言**：
+- 🇨🇳 简体中文 (zh_cn)
+- 🇹🇼 繁体中文 (zh_tw)
+- 🇭🇰 香港繁体 (zh_hk)
+- 🇺🇸 英语 (en_US)
+- 🇩🇪 德语 (de_de)
+- 🇫🇷 法语 (fr_fr)
+- 🇯🇵 日语 (ja_jp)
 
-```yaml
-features:
-  bank-enabled: true           # 公会银行系统
-  chat-enabled: true           # 公会聊天频道
-  experience-enabled: true     # 经验/贡献度系统
-  level-enabled: true          # 公会等级系统
-  motd-enabled: true           # 公会公告(MOTD)
-  tag-enabled: true            # 公会标签显示
-  notification-enabled: true   # 上下线通知
-  gui-enabled: true            # GUI 界面
-```
+---
 
-## 文件结构
+## 📥 安装方法
 
-```
-Guild/
-├── src/main/java/com/guild/
-│   ├── GuildPlugin.java           # 插件主类
-│   ├── guild/
-│   │   ├── Guild.java             # 公会数据模型
-│   │   ├── GuildManager.java      # 公会管理器
-│   │   ├── GuildMember.java       # 成员数据模型
-│   │   ├── GuildRole.java         # 角色枚举
-│   │   └── GuildBank.java         # 银行系统
-│   ├── gui/
-│   │   ├── GuildGUI.java          # 公会主界面
-│   │   ├── GuildBankGUI.java      # 银行界面
-│   │   ├── GuildManageGUI.java    # 管理界面
-│   │   └── GuildListGUI.java      # 公会列表
-│   ├── listeners/
-│   │   ├── PlayerListener.java    # 玩家事件监听器
-│   │   ├── InventoryListener.java # GUI 事件监听器
-│   │   └── ChatInputListener.java # 聊天输入监听器
-│   ├── commands/
-│   │   ├── GuildCommand.java      # 公会主命令
-│   │   ├── GuildChatCommand.java  # 聊天命令
-│   │   └── GuildGUICommand.java   # GUI 命令
-│   ├── database/
-│   │   ├── DatabaseManager.java   # 数据库管理器
-│   │   └── SQLiteManager.java     # SQLite 实现
-│   ├── cache/
-│   │   └── PlayerNameCache.java   # 玩家名称缓存
-│   ├── config/
-│   │   ├── GUIConfig.java         # GUI 配置
-│   │   ├── FeatureConfig.java     # 功能配置
-│   │   └── CurrencyConfig.java    # 货币配置
-│   ├── api/
-│   │   ├── GuildAPI.java          # 公开 API
-│   │   ├── GuildData.java         # 数据只读视图
-│   │   └── GuildInviteInfo.java   # 邀请信息
-│   └── currency/
-│       ├── GuildCurrency.java     # 货币接口
-│       ├── InternalCoin.java      # 内置币实现
-│       ├── VaultCurrency.java     # Vault 实现
-│       └── PlayerPointsCurrency.java # PlayerPoints 实现
-├── src/main/resources/
-│   ├── plugin.yml                 # 插件描述文件
-│   ├── config.yml                 # 主配置文件
-│   └── lang/
-│       ├── zh_cn.yml              # 简体中文
-│       ├── zh_tw.yml              # 繁体中文
-│       └── en_US.yml              # 英文
-└── pom.xml                        # Maven 构建配置
-```
+1. 下载插件 JAR 文件
+2. 将文件放入服务器的 `plugins` 文件夹
+3. 重启服务器或使用插件管理器加载
+4. 编辑配置文件（可选）
+5. 完成！
 
-## 开发者信息
+---
 
+## 💻 技术信息
+
+- **插件名称**: Guild
 - **作者**: ya_xzer21145
-- **Java 版本**: 8+
-- **构建工具**: Maven
+- **适用版本**: 1.8.8 - 1.21.1
+- **支持服务端**: Spigot, Paper, Purpur
+- **必要依赖**: 无（可选Vault、PlayerPoints）
 
-## 许可证
+---
 
-MIT License 3.0
+## 🤝 支持与反馈
+
+如有问题或建议，欢迎在本帖回复或联系作者。(推荐加入QQ群进行交流)
+
+---
+
+**下载插件，为你的服务器添加完整的公会系统吧！** 🎉

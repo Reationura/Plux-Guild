@@ -1,85 +1,18 @@
-# ============================================================
-#  Guild Plugin Language Pack - English
-#  Format: key: value (one per line)
-# ============================================================
+plugin:
+  enabling: Enabling Guild
+  enabled: GuildPlugin has been enabled!
+  disabling: Disabling Guild
+  disabled: GuildPlugin has been disabled!
+  author: By GuildPlugin
+  version: v1.7.0
 
-plugin.enabling: Enabling Guild
-plugin.enabled: Guild plugin enabled!
-plugin.disabling: Disabling Guild
-plugin.disabled: Guild plugin disabled!
-plugin.author: Author: ya_xzer21145
-plugin.version: v3.0.4
-
-guild.created: "&aSuccessfully created guild: %name%"
-guild.deleted: "&cGuild has been disbanded"
-guild.joined: "&aYou have joined the guild"
-guild.left: "&aYou have left the guild"
-guild.already-in-guild: "&cYou are already in a guild"
-guild.not-in-guild: "&cYou are not in any guild"
-guild.no-permission: "&cYou don't have permission to do this"
-guild.guild-not-found: "&cGuild not found"
-guild.player-not-found: "&cPlayer not found"
-guild.name-exists: "&cThat guild name is already taken"
-guild.name-length-invalid: "&cGuild name must be between %min% and %max% characters"
-guild.name-chars-invalid: "&cGuild name contains invalid characters"
-guild.tag-length-invalid: "&cTag length cannot exceed %max% characters"
-guild.tag-updated: "&aGuild tag updated to: &e%tag%"
-guild.motd-too-long: "&cAnnouncement is too long"
-guild.motd-updated: "&aGuild announcement updated"
-guild.already-exists: "&cThat name is already taken"
-
-member.promoted: "&aYou have been promoted to &e%role%"
-member.demoted: "&aYou have been demoted to &e%role%"
-member.kicked: "&cYou have been kicked from the guild"
-member.promoted-other: "&a%player% has been promoted to &e%role%"
-member.demoted-other: "&a%player% has been demoted to &e%role%"
-member.kicked-other: "&a%player% has been kicked from the guild"
-member.transferred: "&aOwnership transferred to &e%player%"
-
-guild.join-request: "&6%player% requested to join your guild, use /guild accept %name% to accept"
-invite.sent: "&aInvite sent to &e%player%"
-invite.not-found: "&cNo pending invite found for that player"
-invite.no-pending: "&cNo pending invites/requests"
-
-chat.format: "&8[&6Guild&8] &f%player%&7: &f%message%"
-chat.officer-format: "&8[&cAdmin&8] &f%player%&7: &f%message%"
-chat.muted: "&cYou are muted and cannot speak in guild chat"
-
-bank.invalid-amount: "&cPlease enter a valid amount"
-bank.amount-positive: "&cAmount must be greater than zero"
-bank.deposit-success: "&aDeposited &e%amount% guild coins"
-bank.deposit-failed: "&cDeposit failed, insufficient balance"
-bank.withdraw-success: "&aWithdrew &e%amount% guild coins"
-bank.withdraw-failed: "&cWithdrawal failed, insufficient bank balance"
-bank.balance: "&6Guild bank balance: &e%balance%"
-
-guild.level-up: "&aGuild leveled up! Current level: &e%level%"
-guild.upgrade-failed: "&cUpgrade failed, insufficient funds"
-guild.exp-purchased: "&aPurchased &e%amount% experience points"
-guild.purchase-failed: "&cPurchase failed, insufficient funds"
-
-error.command-only-player: "&cThis command can only be used by players"
-error.invalid-arguments: "&cInvalid arguments, use /guild help for usage"
-error.cannot-leave-as-owner: "&cGuild owner cannot leave, transfer ownership or disband first"
-error.cannot-kick-higher-role: "&cYou cannot kick members with higher role than you"
-error.cannot-promote-higher-role: "&cYou cannot promote members with higher role than you"
-error.cannot-demote-higher-role: "&cYou cannot demote members with higher role than you"
-error.player-not-in-guild: "&cThat player is not in your guild"
-
-gui.title.main: "&6Guild System"
-gui.title.no-guild: "&6&lCreate or Join Guild"
-gui.title.all-guilds: "&6All Guilds"
-gui.title.member: "&6Guild: &e%name%"
-gui.title.bank: "&6Guild Bank: &e%name%"
-gui.item.create: "&aCreate Guild"
-gui.item.view-all: "&eView All Guilds"
-gui.item.back: "&cBack"
-gui.item.info: "&eGuild Info"
-gui.item.members: "&eMembers"
-gui.item.settings: "&eSettings"
-gui.item.leave: "&cLeave Guild"
-gui.item.manage: "&cManage Guild"
-gui.item.upgrade: "&aUpgrade Guild"
-gui.item.buy-exp: "&bBuy Experience"
-gui.item.deposit: "&aDeposit Funds"
-gui.item.withdraw: "&cWithdraw Funds"
+guild:
+  created: Guild created successfully
+  deleted: Guild deleted successfully
+  joined: You have joined the guild
+  left: You have left the guild
+  already_in_guild: You are already in a guild
+  not_in_guild: You are not in a guild
+  no_permission: You do not have permission
+  guild_not_found: Guild not found
+  player_not_found: Player not found

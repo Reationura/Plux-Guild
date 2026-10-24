@@ -1,273 +1,165 @@
 package com.guild.currency;
+
 import com.guild.GuildPlugin;
+import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
-import org.bukkit.OfflinePlayer;
-import java.lang.reflect.Method;
+import org.bukkit.entity.Player;
+
 import java.util.UUID;
 
-public class GuildCurrency
-{
+public class GuildCurrency {
+    
+    public enum CurrencyType {
+        DEFAULT,    // 公会币
+        VAULT,      // Vault经济系统
+        PLAYERPOINTS // PlayerPoints积分系统
+    }
+    
     private final GuildPlugin plugin;
-    private Object vaultEconomy;
-    private Method vaultHasMethod;
-    private Method vaultWithdrawMethod;
-    private Method vaultDepositMethod;
-    private Method vaultGetBalanceMethod;
-    private boolean vaultInitialized = false;
-    private boolean vaultAvailable = false;
-    private boolean playerPointsEnabled = false;
-    private static Method ppLookUpMethod;
-    private static Method ppGetMethod;
-    private static Method ppSetMethod;
-    private static Method ppGiveMethod;
-    private static Method ppTakeMethod;
-    private static boolean ppMethodsInitialized = false;
-    private static Object cachedPlayerPointsApi;
-
-    public GuildCurrency(GuildPlugin plugin)
-    {
+    private Economy economy;
+    private boolean playerPointsEnabled;
+    
+    public GuildCurrency(GuildPlugin plugin) {
         this.plugin = plugin;
-        initVault();
-        initPlayerPoints();
+        initializeVault();
+        initializePlayerPoints();
     }
-
-    @SuppressWarnings("unchecked")
-    private synchronized void initVault()
-    {
-        if (vaultInitialized) return;
-        try
-        {
-            if (Bukkit.getPluginManager().getPlugin("Vault") == null)
-            {
-                vaultAvailable = false;
-                vaultInitialized = true;
-                return;
+    
+    private void initializeVault() {
+        if (Bukkit.getPluginManager().getPlugin("Vault") != null) {
+            org.bukkit.plugin.RegisteredServiceProvider<Economy> rsp = 
+                Bukkit.getServicesManager().getRegistration(Economy.class);
+            if (rsp != null) {
+                economy = rsp.getProvider();
             }
-            Class<?> economyClass = Class.forName("net.milkbowl.vault.economy.Economy");
-            Object registration = Bukkit.getServicesManager().getRegistration(economyClass);
-            if (registration == null)
-            {
-                vaultAvailable = false;
-                vaultInitialized = true;
-                return;
-            }
-            Method getProvider = registration.getClass().getMethod("getProvider");
-            vaultEconomy = getProvider.invoke(registration);
-            if (vaultEconomy == null)
-            {
-                vaultAvailable = false;
-                vaultInitialized = true;
-                return;
-            }
-            Class<?> ecoClass = vaultEconomy.getClass();
-            vaultHasMethod = ecoClass.getMethod("has", OfflinePlayer.class, double.class);
-            vaultWithdrawMethod = ecoClass.getMethod("withdrawPlayer", OfflinePlayer.class, double.class);
-            vaultDepositMethod = ecoClass.getMethod("depositPlayer", OfflinePlayer.class, double.class);
-            vaultGetBalanceMethod = ecoClass.getMethod("getBalance", OfflinePlayer.class);
-            vaultAvailable = true;
-            plugin.getLogger().info("Vault economy initialized successfully");
-        }
-        catch (ClassNotFoundException e)
-        {
-            vaultAvailable = false;
-        }
-        catch (Exception e)
-        {
-            vaultAvailable = false;
-            plugin.getLogger().warning("Vault initialization failed: " + e.getMessage());
-        }
-        vaultInitialized = true;
-    }
-
-    private synchronized void initPlayerPoints()
-    {
-        if (ppMethodsInitialized) return;
-        try
-        {
-            Class<?> ppApiClass = Class.forName("org.black_ixx.playerpoints.PlayerPoints");
-            Object ppApi = Bukkit.getServicesManager().getRegistration(ppApiClass).getProvider();
-            cachedPlayerPointsApi = ppApi;
-            ppLookUpMethod = ppApiClass.getMethod("lookUpUUID", UUID.class);
-            ppGetMethod = ppApiClass.getMethod("get", UUID.class);
-            ppSetMethod = ppApiClass.getMethod("set", UUID.class, int.class);
-            ppGiveMethod = ppApiClass.getMethod("give", UUID.class, int.class);
-            ppTakeMethod = ppApiClass.getMethod("take", UUID.class, int.class);
-            playerPointsEnabled = true;
-            plugin.getLogger().info("PlayerPoints initialized successfully");
-        }
-        catch (Exception e)
-        {
-            playerPointsEnabled = false;
-        }
-        ppMethodsInitialized = true;
-    }
-
-    public boolean withdraw(UUID playerUuid, long amount, CurrencyType type)
-    {
-        if (amount <= 0) return false;
-        switch (type)
-        {
-            case VAULT: return withdrawFromVault(playerUuid, amount);
-            case PLAYER_POINTS: return takeFromPlayerPoints(playerUuid, (int) amount);
-            case GUILD_COIN: return plugin.getGuildManager().withdrawPlayerGuildCurrency(playerUuid, amount);
-            default: return false;
         }
     }
-
-    public boolean deposit(UUID playerUuid, long amount, CurrencyType type)
-    {
-        if (amount <= 0) return false;
-        switch (type)
-        {
-            case VAULT: return depositToVault(playerUuid, amount);
-            case PLAYER_POINTS: return givePlayerPoints(playerUuid, (int) amount);
-            case GUILD_COIN: return plugin.getGuildManager().depositPlayerGuildCurrency(playerUuid, amount);
-            default: return false;
-        }
+    
+    private void initializePlayerPoints() {
+        playerPointsEnabled = Bukkit.getPluginManager().isPluginEnabled("PlayerPoints");
     }
-
-    public long getBalance(UUID playerUuid, CurrencyType type)
-    {
-        switch (type)
-        {
-            case VAULT: return (long) getVaultBalance(playerUuid);
-            case PLAYER_POINTS: return getPlayerPointsBalance(playerUuid);
-            case GUILD_COIN: return plugin.getGuildManager().getPlayerGuildCurrency(playerUuid);
-            default: return 0L;
-        }
+    
+    public boolean hasVault() {
+        return economy != null;
     }
-
-    private boolean withdrawFromVault(UUID playerUuid, long amount)
-    {
-        if (!vaultAvailable || vaultEconomy == null || vaultHasMethod == null) return false;
-        try
-        {
-            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerUuid);
-            Boolean has = (Boolean) vaultHasMethod.invoke(vaultEconomy, offlinePlayer, (double) amount);
-            if (has == null || !has.booleanValue()) return false;
-            Object result = vaultWithdrawMethod.invoke(vaultEconomy, offlinePlayer, (double) amount);
-            if (result != null)
-            {
-                return (Boolean) result.getClass().getMethod("transactionSuccess").invoke(result);
-            }
-            return true;
-        }
-        catch (Exception e)
-        {
-            return false;
-        }
-    }
-
-    private boolean depositToVault(UUID playerUuid, long amount)
-    {
-        if (!vaultAvailable || vaultEconomy == null || vaultDepositMethod == null) return false;
-        try
-        {
-            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerUuid);
-            Object result = vaultDepositMethod.invoke(vaultEconomy, offlinePlayer, (double) amount);
-            if (result != null)
-            {
-                return (Boolean) result.getClass().getMethod("transactionSuccess").invoke(result);
-            }
-            return true;
-        }
-        catch (Exception e)
-        {
-            return false;
-        }
-    }
-
-    private double getVaultBalance(UUID playerUuid)
-    {
-        if (!vaultAvailable || vaultEconomy == null || vaultGetBalanceMethod == null) return 0D;
-        try
-        {
-            return (Double) vaultGetBalanceMethod.invoke(vaultEconomy, Bukkit.getOfflinePlayer(playerUuid));
-        }
-        catch (Exception e)
-        {
-            return 0D;
-        }
-    }
-
-    private boolean givePlayerPoints(UUID playerUuid, int amount)
-    {
-        if (!playerPointsEnabled || ppGiveMethod == null) return false;
-        try
-        {
-            Object ppApi = getPlayerPointsApi();
-            ppGiveMethod.invoke(ppApi, playerUuid, amount);
-            return true;
-        }
-        catch (Exception e)
-        {
-            return false;
-        }
-    }
-
-    private boolean takeFromPlayerPoints(UUID playerUuid, int amount)
-    {
-        if (!playerPointsEnabled || ppTakeMethod == null) return false;
-        try
-        {
-            Object ppApi = getPlayerPointsApi();
-            int current = (Integer) ppGetMethod.invoke(ppApi, playerUuid);
-            if (current < amount) return false;
-            ppTakeMethod.invoke(ppApi, playerUuid, amount);
-            return true;
-        }
-        catch (Exception e)
-        {
-            return false;
-        }
-    }
-
-    private long getPlayerPointsBalance(UUID playerUuid)
-    {
-        if (!playerPointsEnabled || ppGetMethod == null) return 0L;
-        try
-        {
-            Object ppApi = getPlayerPointsApi();
-            return (Integer) ppGetMethod.invoke(ppApi, playerUuid);
-        }
-        catch (Exception e)
-        {
-            return 0L;
-        }
-    }
-
-    private Object getPlayerPointsApi() throws Exception
-    {
-        if (cachedPlayerPointsApi == null)
-        {
-            throw new IllegalStateException("PlayerPoints API not initialized");
-        }
-        return cachedPlayerPointsApi;
-    }
-
-    public boolean isVaultAvailable()
-    {
-        return vaultAvailable;
-    }
-
-    public boolean isPlayerPointsAvailable()
-    {
+    
+    public boolean hasPlayerPoints() {
         return playerPointsEnabled;
     }
-
-    public String formatAmount(long amount, CurrencyType type)
-    {
-        switch (type)
-        {
-            case VAULT: return String.format("%,.0f 金币", (double) amount);
-            case PLAYER_POINTS: return amount + " 点数";
-            case GUILD_COIN: return amount + " 公会币";
-            default: return String.valueOf(amount);
+    
+    public long getBalance(UUID uuid, CurrencyType type) {
+        Player player = Bukkit.getPlayer(uuid);
+        if (player == null) return 0;
+        
+        switch (type) {
+            case VAULT:
+                if (economy != null) {
+                    return (long) economy.getBalance(player);
+                }
+                return 0;
+            case PLAYERPOINTS:
+                if (playerPointsEnabled) {
+                    return getPlayerPoints(player);
+                }
+                return 0;
+            case DEFAULT:
+                return plugin.getGuildManager().getPlayerGuildCurrency(uuid);
+            default:
+                return 0;
         }
     }
-
-    public enum CurrencyType
-    {
-        VAULT, PLAYER_POINTS, GUILD_COIN
+    
+    public boolean withdraw(UUID uuid, long amount, CurrencyType type) {
+        Player player = Bukkit.getPlayer(uuid);
+        if (player == null) return false;
+        
+        switch (type) {
+            case VAULT:
+                if (economy != null && economy.getBalance(player) >= amount) {
+                    economy.withdrawPlayer(player, amount);
+                    return true;
+                }
+                return false;
+            case PLAYERPOINTS:
+                if (playerPointsEnabled && getPlayerPoints(player) >= amount) {
+                    return takePlayerPoints(player, amount);
+                }
+                return false;
+            case DEFAULT:
+                return plugin.getGuildManager().withdrawPlayerGuildCurrency(uuid, amount);
+            default:
+                return false;
+        }
+    }
+    
+    public boolean deposit(UUID uuid, long amount, CurrencyType type) {
+        Player player = Bukkit.getPlayer(uuid);
+        if (player == null) return false;
+        
+        switch (type) {
+            case VAULT:
+                if (economy != null) {
+                    economy.depositPlayer(player, amount);
+                    return true;
+                }
+                return false;
+            case PLAYERPOINTS:
+                if (playerPointsEnabled) {
+                    return givePlayerPoints(player, amount);
+                }
+                return false;
+            case DEFAULT:
+                return plugin.getGuildManager().depositPlayerGuildCurrency(uuid, amount);
+            default:
+                return false;
+        }
+    }
+    
+    private long getPlayerPoints(Player player) {
+        try {
+            Class<?> ppClass = Class.forName("org.black_ixx.playerpoints.PlayerPoints");
+            Object ppAPI = ppClass.getMethod("getAPI").invoke(null);
+            return (long) ppAPI.getClass().getMethod("look", UUID.class).invoke(ppAPI, player.getUniqueId());
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+    
+    private boolean takePlayerPoints(Player player, long amount) {
+        try {
+            Class<?> ppClass = Class.forName("org.black_ixx.playerpoints.PlayerPoints");
+            Object ppAPI = ppClass.getMethod("getAPI").invoke(null);
+            return (boolean) ppAPI.getClass().getMethod("take", UUID.class, int.class)
+                .invoke(ppAPI, player.getUniqueId(), (int) amount);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    
+    private boolean givePlayerPoints(Player player, long amount) {
+        try {
+            Class<?> ppClass = Class.forName("org.black_ixx.playerpoints.PlayerPoints");
+            Object ppAPI = ppClass.getMethod("getAPI").invoke(null);
+            return (boolean) ppAPI.getClass().getMethod("give", UUID.class, int.class)
+                .invoke(ppAPI, player.getUniqueId(), (int) amount);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    
+    public String formatAmount(long amount, CurrencyType type) {
+        switch (type) {
+            case VAULT:
+                if (economy != null) {
+                    return economy.format(amount);
+                }
+                return amount + " " + plugin.getCurrencyConfig().getVaultCurrencyName();
+            case PLAYERPOINTS:
+                return amount + " " + plugin.getCurrencyConfig().getPlayerPointsCurrencyName();
+            case DEFAULT:
+                return amount + " " + plugin.getCurrencyConfig().getGuildCurrencyName();
+            default:
+                return String.valueOf(amount);
+        }
     }
 }
