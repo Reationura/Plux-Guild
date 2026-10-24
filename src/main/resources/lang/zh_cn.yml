@@ -54,10 +54,11 @@ chat.muted: "&c你已被禁言，无法在公会频道发言"
 bank.invalid-amount: "&c请输入有效金额"
 bank.amount-positive: "&c金额必须大于零"
 bank.deposit-success: "&a成功存入 &e%amount% 公会币"
-bank.deposit-failed: "&c存入失败，余额不足"
+bank.deposit-failed: "&c存入失败，余额不足或超出限额"
 bank.withdraw-success: "&a成功取出 &e%amount% 公会币"
-bank.withdraw-failed: "&c取出失败，银行余额不足"
+bank.withdraw-failed: "&c取出失败，银行余额不足或超出限额"
 bank.balance: "&6公会银行余额: &e%balance%"
+bank.permission-required: "&c该操作需要 %role% 及以上职位"
 
 # ---------- 升级/经验 ----------
 guild.level-up: "&a公会升级成功！当前等级: &e%level%"
@@ -73,6 +74,18 @@ error.cannot-kick-higher-role: "&c你不能踢出比你职位高的成员"
 error.cannot-promote-higher-role: "&c你不能提升比你职位高的成员"
 error.cannot-demote-higher-role: "&c你不能降级比你职位高的成员"
 error.player-not-in-guild: "&c该玩家不在你的公会中"
+
+# ---------- 冷却与职位限制（3.0.9，对应 guild.yml） ----------
+guild.cooldown-join: "&c加入冷却中，请 %seconds% 秒后再试"
+guild.cooldown-invite: "&e%player% 处于邀请冷却中，请 %seconds% 秒后再试"
+guild.cooldown-rename: "&c公会重命名冷却中，请 %seconds% 秒后再试"
+guild.cooldown-tag: "&c公会标签修改冷却中，请 %seconds% 秒后再试"
+guild.cooldown-disband: "&c你刚解散过公会，请 %seconds% 秒后再创建"
+guild.cooldown-promote: "&c该成员职位调整冷却中，请 %seconds% 秒后再试"
+guild.cooldown-demote: "&c该成员职位调整冷却中，请 %seconds% 秒后再试"
+guild.cooldown-kick: "&c踢人操作冷却中，请 %seconds% 秒后再试"
+guild.officer-limit: "&c公会管理员数量已达上限（%max% 人）"
+guild.self-demote: "&c未开启允许自我降级，无法降级自己"
 
 # ---------- GUI ----------
 gui.title.main: "&6公会系统"

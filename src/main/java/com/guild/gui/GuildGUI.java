@@ -165,6 +165,11 @@ public class GuildGUI
 
             private static String getPlayerName(UUID uuid)
             {
+                // 3.0.8：优先使用管理器名称缓存，避免主线程 Bukkit.getOfflinePlayer 磁盘查询卡顿
+                if (com.guild.api.GuildAPI.isApiReady())
+                {
+                    return com.guild.api.GuildAPI.getInstance().getPlugin().getGuildManager().getPlayerNameCached(uuid);
+                }
                 OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
                 return op.getName() != null ? op.getName() : "未知";
             }}

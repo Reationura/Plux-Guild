@@ -1,6 +1,6 @@
 # Guild
 
-> 功能全面的 Minecraft 公会管理插件 - 支持 GUI/等级经验/银行系统/聊天频道/多货币 | 兼容 1.8 ~ 26.1+
+> 功能全面的 Minecraft 公会管理插件 - 支持 GUI/等级经验/银行系统/聊天频道/多货币 | 兼容 1.8 ~ 1.26.1+
 
 ![Java](https://img.shields.io/badge/Java-8-blue)
 ![Folia](https://img.shields.io/badge/Folia-supported-green)
@@ -41,7 +41,7 @@
 
 ### 安装
 
-1. 下载最新版本的 `Guild-3.0.1.jar`
+1. 下载最新版本的 `Guild-3.0.4.jar`
 2. 将插件放入服务器的 `plugins` 文件夹
 3. 启动服务器，插件将自动生成配置文件
 4. 根据需要修改 `plugins/Guild/config.yml` 配置文件

@@ -1,5 +1,5 @@
 name: Guild
-version: 3.0.7
+version: 3.0.9
 main: com.guild.GuildPlugin
 author: ya_xzer21145
 description: 功能全面的公会管理插件，原生兼容 1.8 ~ 26.1+，支持 Spigot/Paper/Purpur/Folia

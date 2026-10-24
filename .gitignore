@@ -1,0 +1,9 @@
+# 运行/调试产生的日志文件
+*.log
+
+# IntelliJ IDEA 模块文件（.idea 目录本身按需要保留跟踪）
+*.iml
+
+# 操作系统缓存
+.DS_Store
+Thumbs.db

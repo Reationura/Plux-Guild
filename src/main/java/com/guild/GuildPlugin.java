@@ -15,6 +15,7 @@ import com.guild.currency.GuildCurrency;
 import com.guild.database.DatabaseManager;
 import com.guild.guild.GuildManager;
 import com.guild.listeners.ChatInputListener;
+import com.guild.listeners.ExperienceListener;
 import com.guild.listeners.InventoryListener;
 import com.guild.listeners.PlayerListener;
 import com.guild.papi.GuildPlaceholderExpansion;
@@ -22,6 +23,7 @@ import com.guild.utils.VersionCompat;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandExecutor;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import java.io.*;
@@ -30,6 +32,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 public class GuildPlugin extends JavaPlugin
@@ -56,13 +59,16 @@ public class GuildPlugin extends JavaPlugin
 
     private GuildCurrency guildCurrency;
 
-    private final Map<String, String> messages = new HashMap<>();
+    /** 3.0.9：改为 ConcurrentHashMap，异步任务（自动踢人/保存队列）读取文案时不会与重载并发写冲突 */
+    private final Map<String, String> messages = new ConcurrentHashMap<>();
 
     private String currentLanguage;
 
     private PlayerNameCache playerNameCache;
 
     private ChatInputListener chatInputListener;
+
+    private ExperienceListener experienceListener;
 
     private volatile long lastDailyResetDay;
 
@@ -76,10 +82,9 @@ public class GuildPlugin extends JavaPlugin
         checkConfigVersion();
         loadLanguage();
         saveLanguageFiles();
-        guildManager = new GuildManager(this);
-        databaseManager = new DatabaseManager(this);
-        databaseManager.initialize();
-        playerNameCache = new PlayerNameCache(this);
+        // 3.0.9：调整初始化顺序——先构建全部配置，再创建依赖配置的管理器与加载数据库。
+        // 旧版先 initialize() 加载公会，Guild 构造时读不到 guild.yml/experience.yml/bank.yml（只能回退默认值），
+        // 且极易重现 3.0.7 的"子类字段尚未初始化即被访问"崩溃。
         guiConfig = new GUIConfig(this);
         featureConfig = new FeatureConfig(this);
         currencyConfig = new CurrencyConfig(this);
@@ -87,6 +92,10 @@ public class GuildPlugin extends JavaPlugin
         guildConfig = new GuildConfig(this);
         experienceConfig = new ExperienceConfig(this);
         bankConfig = new BankConfig(this);
+        guildManager = new GuildManager(this);
+        databaseManager = new DatabaseManager(this);
+        databaseManager.initialize();
+        playerNameCache = new PlayerNameCache(this);
         guildCurrency = new GuildCurrency(this);
         registerCommands();
         registerListeners();
@@ -99,6 +108,11 @@ public class GuildPlugin extends JavaPlugin
     @Override
     public void onDisable()
     {
+        // 3.0.9：关闭前同步排空异步保存/删除队列，修复旧版 reload/重启时未落库数据丢失的问题
+        if (guildManager != null)
+        {
+            guildManager.shutdown();
+        }
         if (databaseManager != null)
         {
             databaseManager.close();
@@ -128,9 +142,45 @@ public class GuildPlugin extends JavaPlugin
     {
         currentLanguage = getConfig().getString("language", "zh_cn");
         messages.clear();
-        messages.putAll(loadLanguageFile(currentLanguage));
+        Map<String, String> loaded = loadLanguageFile(currentLanguage);
+        // 3.0.9：用 JAR 内置语言包补齐旧配置文件中缺失的新增键（玩家自定义值优先保留）
+        fillMissingMessages(loaded, currentLanguage);
+        messages.putAll(loaded);
+        // 3.0.9：语言包中的 plugin.version 为旧硬编码值（如 v3.0.4），统一以 plugin.yml 实际版本覆盖
+        messages.put("plugin.version", "v" + getDescription().getVersion());
         getLogger().info("Loaded language file: " + currentLanguage + ".yml");
         getLogger().info("Default language set to: " + currentLanguage);
+    }
+
+    /**
+     * 升级用户 servers/{plugin}/lang/*.yml 是旧版本释放的文件，不包含新增文案键，
+     * 直接使用会在聊天栏里输出 "guild.cooldown-join" 这样的原始键名。
+     * 本方法仅补齐缺失键，不修改已有值，因此无需玩家手动对比新增配置。
+     */
+    private void fillMissingMessages(Map<String, String> target, String lang)
+    {
+        try (InputStream inputStream = getResource("lang/" + lang + ".yml"))
+        {
+            if (inputStream == null) return;
+            YamlConfiguration bundled = YamlConfiguration.loadConfiguration(new InputStreamReader(inputStream, "UTF-8"));
+            int added = 0;
+            for (String key : bundled.getKeys(true))
+            {
+                if (target.containsKey(key)) continue;
+                String value = bundled.getString(key);
+                if (value == null || value.isEmpty()) continue;
+                target.put(key, value);
+                added++;
+            }
+            if (added > 0)
+            {
+                getLogger().info("Filled " + added + " missing message key(s) from built-in " + lang + ".yml");
+            }
+        }
+        catch (Exception e)
+        {
+            getLogger().warning("Could not fill missing message keys for " + lang + ".yml");
+        }
     }
 
     private Map<String, String> loadLanguageFile(String lang)
@@ -283,6 +333,13 @@ public class GuildPlugin extends JavaPlugin
         inventoryListener.setChatInputListener(chatInputListener);
         Bukkit.getPluginManager().registerEvents((Listener) inventoryListener, this);
         Bukkit.getPluginManager().registerEvents((Listener) chatInputListener, this);
+        // 3.0.9：接入 experience.yml 全部经验事件（旧版仅“击杀玩家”一项生效）
+        experienceListener = ExperienceListener.register(this);
+    }
+
+    public ExperienceListener getExperienceListener()
+    {
+        return experienceListener;
     }
 
     private void registerPlaceholderAPI()
@@ -444,6 +501,15 @@ public class GuildPlugin extends JavaPlugin
         {
             bankConfig.reload();
             getLogger().info("Bank config reloaded");
+            // 3.0.9：bank.yml max-history-records 修改后立即对内存中的公会生效（旧版需要重启）
+            if (guildManager != null)
+            {
+                int maxRecords = bankConfig.getMaxHistoryRecords();
+                for (com.guild.guild.Guild guild : guildManager.getGuilds().values())
+                {
+                    if (guild.getBank() != null) guild.getBank().setMaxRecordsPerPlayer(maxRecords);
+                }
+            }
         }
         if (guiConfig != null)
         {
