@@ -19,6 +19,7 @@ import com.guild.listeners.ExperienceListener;
 import com.guild.listeners.InventoryListener;
 import com.guild.listeners.PlayerListener;
 import com.guild.papi.GuildPlaceholderExpansion;
+import com.guild.utils.UpdateChecker;
 import com.guild.utils.VersionCompat;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -59,7 +60,6 @@ public class GuildPlugin extends JavaPlugin
 
     private GuildCurrency guildCurrency;
 
-    /** 3.0.9：改为 ConcurrentHashMap，异步任务（自动踢人/保存队列）读取文案时不会与重载并发写冲突 */
     private final Map<String, String> messages = new ConcurrentHashMap<>();
 
     private String currentLanguage;
@@ -72,19 +72,18 @@ public class GuildPlugin extends JavaPlugin
 
     private volatile long lastDailyResetDay;
 
-    private static final double CURRENT_CONFIG_VERSION = 1.3;
+    private UpdateChecker updateChecker;
+
+    private static final double CURRENT_CONFIG_VERSION = 1.4;
 
     @Override
     public void onEnable()
     {
         instance = this;
         saveDefaultConfig();
-        checkConfigVersion();
+        com.guild.config.ConfigMigrator.migrate(this);
         loadLanguage();
         saveLanguageFiles();
-        // 3.0.9：调整初始化顺序——先构建全部配置，再创建依赖配置的管理器与加载数据库。
-        // 旧版先 initialize() 加载公会，Guild 构造时读不到 guild.yml/experience.yml/bank.yml（只能回退默认值），
-        // 且极易重现 3.0.7 的"子类字段尚未初始化即被访问"崩溃。
         guiConfig = new GUIConfig(this);
         featureConfig = new FeatureConfig(this);
         currencyConfig = new CurrencyConfig(this);
@@ -102,13 +101,14 @@ public class GuildPlugin extends JavaPlugin
         registerPlaceholderAPI();
         startDailyResetTask();
         GuildAPI.init(this);
+        updateChecker = new UpdateChecker(this);
+        updateChecker.start();
         printEnableMessage();
     }
 
     @Override
     public void onDisable()
     {
-        // 3.0.9：关闭前同步排空异步保存/删除队列，修复旧版 reload/重启时未落库数据丢失的问题
         if (guildManager != null)
         {
             guildManager.shutdown();
@@ -120,10 +120,6 @@ public class GuildPlugin extends JavaPlugin
         printDisableMessage();
     }
 
-    /**
-     * 每日重置任务：每分钟检测一次日期变更，
-     * 跨天时重置日常经验/贡献与银行每日限额（受 features.yml daily-reset 开关控制）
-     */
     private void startDailyResetTask()
     {
         lastDailyResetDay = LocalDate.now().toEpochDay();
@@ -143,20 +139,13 @@ public class GuildPlugin extends JavaPlugin
         currentLanguage = getConfig().getString("language", "zh_cn");
         messages.clear();
         Map<String, String> loaded = loadLanguageFile(currentLanguage);
-        // 3.0.9：用 JAR 内置语言包补齐旧配置文件中缺失的新增键（玩家自定义值优先保留）
         fillMissingMessages(loaded, currentLanguage);
         messages.putAll(loaded);
-        // 3.0.9：语言包中的 plugin.version 为旧硬编码值（如 v3.0.4），统一以 plugin.yml 实际版本覆盖
         messages.put("plugin.version", "v" + getDescription().getVersion());
         getLogger().info("Loaded language file: " + currentLanguage + ".yml");
         getLogger().info("Default language set to: " + currentLanguage);
     }
 
-    /**
-     * 升级用户 servers/{plugin}/lang/*.yml 是旧版本释放的文件，不包含新增文案键，
-     * 直接使用会在聊天栏里输出 "guild.cooldown-join" 这样的原始键名。
-     * 本方法仅补齐缺失键，不修改已有值，因此无需玩家手动对比新增配置。
-     */
     private void fillMissingMessages(Map<String, String> target, String lang)
     {
         try (InputStream inputStream = getResource("lang/" + lang + ".yml"))
@@ -246,7 +235,7 @@ public class GuildPlugin extends JavaPlugin
 
     private void saveLanguageFiles()
     {
-        // 修复旧版 " en_US" 带前导空格导致英文语言文件永远无法释放的问题
+
         for (String lang : new String[]
         {
             "en_US", "zh_cn", "zh_tw"
@@ -270,17 +259,6 @@ public class GuildPlugin extends JavaPlugin
             {
                 getLogger().warning("Could not save language file: " + lang + ".yml");
             }
-        }
-    }
-
-    private void checkConfigVersion()
-    {
-        double savedVersion = getConfig().getDouble("config-version", 0.0);
-        if (savedVersion < CURRENT_CONFIG_VERSION)
-        {
-            getLogger().warning("配置文件版本较旧 (" + savedVersion + " -> " + CURRENT_CONFIG_VERSION + ")");
-            getLogger().warning("建议备份现有配置后删除 config.yml，插件将自动生成新版配置");
-            getLogger().warning("未添加的新配置项将使用默认值");
         }
     }
 
@@ -333,7 +311,7 @@ public class GuildPlugin extends JavaPlugin
         inventoryListener.setChatInputListener(chatInputListener);
         Bukkit.getPluginManager().registerEvents((Listener) inventoryListener, this);
         Bukkit.getPluginManager().registerEvents((Listener) chatInputListener, this);
-        // 3.0.9：接入 experience.yml 全部经验事件（旧版仅“击杀玩家”一项生效）
+
         experienceListener = ExperienceListener.register(this);
     }
 
@@ -443,6 +421,16 @@ public class GuildPlugin extends JavaPlugin
         return playerNameCache;
     }
 
+    public UpdateChecker getUpdateChecker()
+    {
+        return updateChecker;
+    }
+
+    public String getPrefix()
+    {
+        return getMessage("message.prefix");
+    }
+
     public String getMessage(String key)
     {
         String msg = messages.get(key);
@@ -501,7 +489,7 @@ public class GuildPlugin extends JavaPlugin
         {
             bankConfig.reload();
             getLogger().info("Bank config reloaded");
-            // 3.0.9：bank.yml max-history-records 修改后立即对内存中的公会生效（旧版需要重启）
+
             if (guildManager != null)
             {
                 int maxRecords = bankConfig.getMaxHistoryRecords();

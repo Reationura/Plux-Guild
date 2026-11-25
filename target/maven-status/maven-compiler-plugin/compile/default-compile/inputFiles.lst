@@ -9,12 +9,16 @@ C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java
 C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\api\GuildAPIProvider.java
 C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\api\GuildData.java
 C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\api\GuildInviteInfo.java
+C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\api\v2\GuildApiV2.java
+C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\api\v2\GuildApiV2Impl.java
+C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\api\v2\GuildApiV2Provider.java
 C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\cache\CacheService.java
 C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\cache\PlayerNameCache.java
 C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\commands\GuildChatCommand.java
 C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\commands\GuildCommand.java
 C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\commands\GuildGUICommand.java
 C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\config\BankConfig.java
+C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\config\ConfigMigrator.java
 C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\config\CurrencyConfig.java
 C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\config\ExperienceConfig.java
 C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\config\FeatureConfig.java
@@ -48,4 +52,5 @@ C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java
 C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\papi\GuildPlaceholderExpansion.java
 C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\utils\LangUtils.java
 C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\utils\MessageUtils.java
+C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\utils\UpdateChecker.java
 C:\Users\Admin\Desktop\Minecraft-开发类\自写插件\Plux\Guild\src\main\java\com\guild\utils\VersionCompat.java

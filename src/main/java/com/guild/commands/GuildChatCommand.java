@@ -42,7 +42,7 @@ public class GuildChatCommand implements CommandExecutor
             return true;
         }
         GuildMember member = guild.getMember(player.getUniqueId());
-        // 3.0.8：补充判空，修复“在公会索引但不在成员表”时 getMember(...).isMuted() 直接 NPE 的 BUG
+
         if (member == null)
         {
             player.sendMessage(ChatColor.RED + "\u6570\u636e\u5f02\u5e38\uff0c\u8bf7\u91cd\u65b0\u52a0\u5165\u516c\u4f1a");
@@ -54,7 +54,7 @@ public class GuildChatCommand implements CommandExecutor
             return true;
         }
         String message = String.join(" ", stringArray);
-        // 3.0.8：聊天格式统一改用 guild.yml chat.format 配置驱动，与 /guild chat 保持一致
+
         String format = plugin.getGuildConfig().getChatFormat();
         format = format.replace("{tag_color}", guild.getTagColor())
             .replace("{tag}", guild.getTag())

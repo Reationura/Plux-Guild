@@ -159,7 +159,6 @@ public boolean onCommand(CommandSender sender, Command cmd, String label, String
         return true;
     }
 
-    /** 安全解析整数（修复旧版多处 NumberFormatException 未捕获导致命令报错） */
     private int parseIntOrDefault(String input, int def)
     {
         if (input == null) return def;
@@ -252,7 +251,7 @@ public boolean onCommand(CommandSender sender, Command cmd, String label, String
             player.sendMessage(ChatColor.RED + "公会名称长度必须在 " + minLen + " 到 " + maxLen + " 之间");
             return;
         }
-        // 名称正则与黑名单校验（guild.yml name-regex / banned-names）
+
         String regex = plugin.getGuildConfig().getNameRegex();
         if (regex != null && !regex.isEmpty() && !name.matches(regex))
         {
@@ -278,8 +277,7 @@ public boolean onCommand(CommandSender sender, Command cmd, String label, String
                 return;
             }
         }
-        // 修复旧版双重扣费：此处不再预扣费用，统一由 GuildManager.createGuild
-        // 按 currency.yml 配置的货币类型扣费并提示
+
         Guild guild = guildManager.createGuild(name, player);
         if (guild == null)
         {
@@ -442,8 +440,7 @@ public boolean onCommand(CommandSender sender, Command cmd, String label, String
                                     }
                                     else
                                     {
-                                        // 3.0.9：邀请失败的原因很多（冷却中时管理器已给出具体提示），
-                                        // 只在确实存在待处理邀请时才报“已有邀请”，避免误导性的重复提示
+
                                         if (guildManager.getInvite(target.getUniqueId()) != null)
                                         {
                                             player.sendMessage(ChatColor.RED + "该玩家已有待处理的邀请");
@@ -577,8 +574,7 @@ public boolean onCommand(CommandSender sender, Command cmd, String label, String
                                                     }
                                                     else
                                                     {
-                                                        // 3.0.9：职位上限 / 冷却 / 禁止自降等失败原因已由管理器给出具体提示，
-                                                        // 这里只补齐管理器静默失败的几种情况，避免重复且误导的提示
+
                                                         GuildMember targetMember = guild.getMember(target.getUniqueId());
                                                         if (targetMember == null)
                                                         {
@@ -655,7 +651,7 @@ public boolean onCommand(CommandSender sender, Command cmd, String label, String
                                                                     player.sendMessage(plugin.getMessage("guild.tag-length-invalid").replace("%max%", String.valueOf(maxTagLen)));
                                                                     return;
                                                                 }
-                                                                // 3.0.9：统一走管理器，使 guild.yml tag-change-cooldown 生效
+
                                                                 if (guildManager.changeTag(guild, args[1], player.getUniqueId()) == 0)
                                                                 {
                                                                     player.sendMessage(plugin.getMessage("guild.tag-updated").replace("%tag%", args[1]));
@@ -737,7 +733,7 @@ public boolean onCommand(CommandSender sender, Command cmd, String label, String
                                                                     return;
                                                                 }
                                                                 String message = String.join(" ", args);
-                                                                // 聊天格式改为配置驱动（guild.yml chat.format）
+
                                                                 String format = plugin.getGuildConfig().getChatFormat();
                                                                 format = format.replace("{tag_color}", guild.getTagColor())
                                                                     .replace("{tag}", guild.getTag())
@@ -761,7 +757,7 @@ public boolean onCommand(CommandSender sender, Command cmd, String label, String
                                                                     return;
                                                                 }
                                                                 String message = String.join(" ", args);
-                                                                // 管理频道格式改为配置驱动（guild.yml chat.officer-format）
+
                                                                 String format = plugin.getGuildConfig().getOfficerChatFormat();
                                                                 format = format.replace("{player}", player.getDisplayName())
                                                                     .replace("{message}", message);
@@ -872,7 +868,7 @@ public boolean onCommand(CommandSender sender, Command cmd, String label, String
                                                                         }
                                                                         switch (args[1].toLowerCase())
                                                                         {
-                                                                            // 修复旧版 case 带前导空格导致设置永远提示"未知属性"
+
                                                                             case "public": guild.setPublicGuild(Boolean.parseBoolean(args[2]));
                                                                             player.sendMessage(ChatColor.GREEN + "公开状态已设置为: " + args[2]);
                                                                             break;
@@ -950,7 +946,7 @@ public boolean onCommand(CommandSender sender, Command cmd, String label, String
                                                                                     player.sendMessage(ChatColor.RED + "该名称已被占用");
                                                                                     return;
                                                                                 }
-                                                                                // 名称合法性校验（与创建时一致）
+
                                                                                 int minLen = plugin.getGuildConfig().getMinNameLength();
                                                                                 int maxLen = plugin.getGuildConfig().getMaxNameLength();
                                                                                 if (newName.length() < minLen || newName.length() > maxLen)
@@ -958,7 +954,7 @@ public boolean onCommand(CommandSender sender, Command cmd, String label, String
                                                                                     player.sendMessage(ChatColor.RED + "公会名称长度必须在 " + minLen + " 到 " + maxLen + " 之间");
                                                                                     return;
                                                                                 }
-                                                                                // 3.0.8：补齐正则与黑名单校验（与创建时一致）
+
                                                                                 String regex = plugin.getGuildConfig().getNameRegex();
                                                                                 if (regex != null && !regex.isEmpty() && !newName.matches(regex))
                                                                                 {
@@ -973,9 +969,7 @@ public boolean onCommand(CommandSender sender, Command cmd, String label, String
                                                                                         return;
                                                                                     }
                                                                                 }
-                                                                                // 修复旧版危险实现：旧版通过"解散+重建"改名，
-                                                                                // 会丢失所有成员/等级/经验/银行/权限数据并重复扣创建费。
-                                                                                // 现改为 GuildManager.renameGuild 原地迁移数据
+
                                                                                 if (guildManager.renameGuild(guild.getName(), newName, player.getUniqueId()))
                                                                                 {
                                                                                     player.sendMessage(ChatColor.GREEN + "公会已重命名为: " + newName);
@@ -1150,7 +1144,7 @@ public boolean onCommand(CommandSender sender, Command cmd, String label, String
                                                                                     player.sendMessage(ChatColor.RED + "无效的分钟数");
                                                                                     return;
                                                                                 }
-                                                                                // 3.0.8：分钟数必须大于 0
+
                                                                                 if (minutes <= 0)
                                                                                 {
                                                                                     player.sendMessage(ChatColor.RED + "分钟数必须大于 0");
@@ -1162,7 +1156,7 @@ public boolean onCommand(CommandSender sender, Command cmd, String label, String
                                                                                     player.sendMessage(ChatColor.RED + "该玩家不是公会成员");
                                                                                     return;
                                                                                 }
-                                                                                // 3.0.8：角色保护——不能禁言会长，非会长不能禁言同级或更高级成员
+
                                                                                 if (member.getRole() == GuildRole.OWNER)
                                                                                 {
                                                                                     player.sendMessage(ChatColor.RED + "不能禁言公会会长");
@@ -1248,7 +1242,7 @@ public boolean onCommand(CommandSender sender, Command cmd, String label, String
                                                                                     player.sendMessage(ChatColor.RED + "你不在任何公会中");
                                                                                     return;
                                                                                 }
-                                                                                // 银行功能开关（features.yml bank.enabled）
+
                                                                                 if (!plugin.getFeatureConfig().isBankEnabled())
                                                                                 {
                                                                                     player.sendMessage(ChatColor.RED + "公会银行功能已关闭");
@@ -1289,7 +1283,7 @@ public boolean onCommand(CommandSender sender, Command cmd, String label, String
                                                                                             player.sendMessage(ChatColor.RED + "你不在任何公会中");
                                                                                             return;
                                                                                         }
-                                                                                        // 银行功能开关（features.yml bank.enabled）
+
                                                                                         if (!plugin.getFeatureConfig().isBankEnabled())
                                                                                         {
                                                                                             player.sendMessage(ChatColor.RED + "公会银行功能已关闭");
@@ -1331,8 +1325,7 @@ public boolean onCommand(CommandSender sender, Command cmd, String label, String
                                                                                                 }
                                                                                                 if ("confirm".equalsIgnoreCase(subArgs[0]))
                                                                                                 {
-                                                                                                    // 修复旧版确认逻辑反转导致永远无法删除的问题：
-                                                                                                    // 记录待删除公会名，确认时执行删除
+
                                                                                                     String pendingName = pendingDeleteConfirm.remove(player.getUniqueId());
                                                                                                     if (pendingName == null)
                                                                                                     {

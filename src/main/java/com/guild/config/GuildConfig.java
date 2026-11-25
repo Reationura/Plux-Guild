@@ -32,9 +32,7 @@ public class GuildConfig extends SimpleFileConfig
     public int getAutoKickInactiveDays() { return config.getInt("auto-kick-inactive-days", 0); }
     public int getAutoDormantDays() { return config.getInt("auto-dormant-days", 0); }
 
-    /** 公会聊天格式（占位符: {tag_color} {tag} {player} {message}） */
     public String getChatFormat() { return config.getString("chat.format", "&6[公会] &f[{tag}] {player}: {message}"); }
 
-    /** 管理频道格式（占位符: {player} {message}） */
     public String getOfficerChatFormat() { return config.getString("chat.officer-format", "&9[管理] &f{player}: {message}"); }
 }

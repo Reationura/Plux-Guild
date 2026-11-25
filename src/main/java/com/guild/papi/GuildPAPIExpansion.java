@@ -32,7 +32,7 @@ public class GuildPAPIExpansion extends PlaceholderExpansion
     @Override
     public String getVersion()
     {
-        // 3.0.8：不再硬编码版本号，跟随插件实际版本
+
         return plugin.getDescription().getVersion();
     }
 
@@ -156,7 +156,7 @@ public class GuildPAPIExpansion extends PlaceholderExpansion
 
     private long calculateRequiredExperience(int level)
     {
-        // 3.0.8：改用 experience.yml 的 level-formula 配置，与 Guild.getRequiredExperience 保持一致
+
         long base = plugin.getExperienceConfig().getLevelFormulaBase();
         double growth = plugin.getExperienceConfig().getLevelFormulaGrowthRate();
         long required = (long) (base * level * (1 + level * growth));

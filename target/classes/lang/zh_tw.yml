@@ -7,7 +7,9 @@ plugin.enabling: 正在啟用 Guild
 plugin.enabled: Guild 插件已啟用!
 plugin.disabling: 正在停用 Guild
 plugin.disabled: Guild 插件已停用!
-plugin.author: 作者: ya_xzer21145
+plugin.author: "作者: Reationura(ya_xzer21145)"
+message.prefix: "&8[&6公會&8] &r"
+update.available: "&e[Guild] &a發現新版本 &f%latest% &7(當前 %current%)&a，請及時更新！"
 plugin.version: v3.0.4
 
 guild.created: "&a成功創建公會: %name%"

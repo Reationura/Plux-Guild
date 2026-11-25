@@ -1,12 +1,11 @@
 name: Guild
-version: 3.0.9
+version: 3.1.0
 main: com.guild.GuildPlugin
-author: ya_xzer21145
+author: Reationura(ya_xzer21145)
 description: 功能全面的公会管理插件，原生兼容 1.8 ~ 26.1+，支持 Spigot/Paper/Purpur/Folia
 api-version: 1.13
 folia-supported: true
 
-# 软依赖：缺失时自动降级，不影响核心功能
 softdepend:
   - Vault
   - PlaceholderAPI
@@ -28,13 +27,6 @@ commands:
     usage: /guildgui [bank]
 
 permissions:
-  # ========== 权限树 ==========
-  # 设计原则：
-  #   guild.*        → 全部权限（仅给 OP）
-  #   guild.admin    → 管理操作权限（踢人/升级/解散等）
-  #   guild.player   → 基础玩家权限（聊天/查看）
-  #   单项权限       → 细粒度控制，默认跟随父级
-
   guild.*:
     description: 所有公会权限
     default: op
@@ -66,7 +58,6 @@ permissions:
       guild.info: true
       guild.shop: true
 
-  # ========== 细粒度单项权限 ==========
   guild.create:
     description: 创建公会
     default: op

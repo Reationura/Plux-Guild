@@ -17,6 +17,7 @@ com\guild\guild\GuildMember.class
 com\guild\api\event\GuildJoinEvent.class
 com\guild\listeners\InventoryListener.class
 com\guild\guild\Guild.class
+com\guild\api\v2\GuildApiV2Provider.class
 com\guild\listeners\InventoryListener$1.class
 com\guild\gui\GuildShopGUI.class
 com\guild\guild\GuildRole.class
@@ -25,14 +26,18 @@ com\guild\guild\GuildManager.class
 com\guild\papi\GuildPlaceholderExpansion.class
 com\guild\config\ExperienceConfig.class
 com\guild\GuildPlugin.class
+com\guild\api\v2\GuildApiV2.class
 com\guild\config\ShopConfig$ShopItemEntry.class
 com\guild\guild\GuildBank.class
 com\guild\listeners\ExperienceListener$Modern.class
+com\guild\utils\UpdateChecker.class
 com\guild\guild\GuildPermission.class
+com\guild\api\v2\GuildApiV2Impl.class
 com\guild\currency\GuildCurrency$CurrencyType.class
 com\guild\api\event\GuildDisbandEvent.class
 com\guild\commands\GuildGUICommand.class
 com\guild\commands\GuildChatCommand.class
+com\guild\config\ConfigMigrator.class
 com\guild\config\ShopConfig.class
 com\guild\papi\GuildPAPIExpansion.class
 com\guild\commands\GuildCommand.class

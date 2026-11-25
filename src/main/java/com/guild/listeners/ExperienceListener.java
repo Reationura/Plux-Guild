@@ -36,19 +36,9 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 
-/**
- * 3.0.9：公会经验获取监听器
- * 旧版 experience.yml 中的 13 种经验事件仅"击杀玩家"一项接入了业务逻辑（且写在 PlayerListener 里），
- * 其余 11 种（挖方块/放方块/钓鱼/繁殖/交易/附魔/合成/酿造/熔炼/驯服/成就）配置完全不生效。
- * 本监听器把这 13 种事件全部集中接入 GuildManager.addExperience，并统一加入：
- * - features.yml experience 总开关判定（旧版玩家击杀路径漏掉了该开关）
- * - 未在公会中的玩家直接跳过（零开销）
- * - 每种事件独立的最小间隔限流（防止高频事件刷经验 + 打爆异步保存队列）
- * - experience.yml no-exp-blocks / no-exp-mobs 黑名单
- */
 public class ExperienceListener implements Listener
 {
-    /** 经验类型索引（对应限流时间戳数组下标） */
+
     private static final int T_MONSTER = 0;
     private static final int T_BLOCK_BREAK = 1;
     private static final int T_BLOCK_PLACE = 2;
@@ -64,7 +54,6 @@ public class ExperienceListener implements Listener
     private static final int T_PLAYER_KILL = 12;
     private static final int TYPE_COUNT = 13;
 
-    /** 各事件最小间隔（毫秒），高频事件限流 */
     private static final long I_MONSTER = 250L;
     private static final long I_BLOCK = 1000L;
     private static final long I_FISHING = 1000L;
@@ -78,18 +67,15 @@ public class ExperienceListener implements Listener
     private static final long I_ADVANCE = 0L;
     private static final long I_PLAYER_KILL = 3000L;
 
-    /** 玩家限流时间戳：uuid -> 每种事件最后发奖时间 */
     private final Map<UUID, long[]> lastAwardAt = new ConcurrentHashMap<>();
 
-    /** 经验黑名单缓存（getStringList 每次都会新建列表，高频事件下必须缓存） */
     private volatile Set<String> noExpBlocks = Collections.emptySet();
     private volatile Set<String> noExpMobs = Collections.emptySet();
     private volatile long lastConfigRefresh = 0L;
     private static final long CONFIG_REFRESH_INTERVAL = 30000L;
-    /** 限流表清理：超过该时间无任何发奖记录的玩家直接移除，防止内存增长 */
+
     private static final long AWARD_STALE_TIME = 600000L;
 
-    /** 酿造材料（按名称匹配，兼容 1.8 与新版 Material 命名差异） */
     private static final Set<String> BREW_INGREDIENTS = new HashSet<>(Arrays.asList(
         "NETHER_WART", "NETHER_WARTS", "GLOWSTONE_DUST", "REDSTONE", "SUGAR", "SPIDER_EYE",
         "GUNPOWDER", "MELON", "GLISTERING_MELON", "CARROT", "GOLDEN_CARROT", "FERMENTED_SPIDER_EYE",
@@ -102,11 +88,6 @@ public class ExperienceListener implements Listener
         this.plugin = plugin;
     }
 
-    /**
-     * 注册监听器：1.8 全版本安全的事件注册在主监听器上，
-     * 仅 1.13+ 才存在的事件（繁殖/成就）放在内部类中，探测到类存在时才注册，
-     * 避免旧服务端因 EventManager 反射解析参数类型而抛 NoClassDefFoundError。
-     */
     public static ExperienceListener register(GuildPlugin plugin)
     {
         ExperienceListener listener = new ExperienceListener(plugin);
@@ -134,9 +115,6 @@ public class ExperienceListener implements Listener
         }
     }
 
-    // ==================== 基础事件（全版本可用） ====================
-
-    /** 击杀怪物 / 击杀玩家：统一在此发奖，避免与旧 PlayerListener 重复计入 */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityDeath(EntityDeathEvent event)
     {
@@ -146,7 +124,7 @@ public class ExperienceListener implements Listener
         {
             Player victim = (Player) dead;
             Player killer = victim.getKiller();
-            // 自杀不计入（击杀者为自己）
+
             if (killer == null || killer.getUniqueId().equals(victim.getUniqueId())) return;
             award(killer, T_PLAYER_KILL, I_PLAYER_KILL, () -> plugin.getExperienceConfig().getPlayerKillExp());
             return;
@@ -200,11 +178,6 @@ public class ExperienceListener implements Listener
         award(event.getPlayer(), T_SMELT, I_SMELT, () -> plugin.getExperienceConfig().getSmeltingExp());
     }
 
-    /**
-     * 工作台合成 / 村民交易 / 酿造台投料：均通过 InventoryClickEvent 检测。
-     * 不使用 CraftingEvent（Paper 1.21+ 已移除）与 1.14+ 才有的 Holder 类型，
-     * 一律用窗口类型/持有者名称与动作名称判定，保证 1.8 服务端不会因类或枚举缺失而报错。
-     */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onInventoryClick(InventoryClickEvent event)
     {
@@ -218,7 +191,7 @@ public class ExperienceListener implements Listener
         Player player = (Player) event.getWhoClicked();
         InventoryType type = top.getType();
         String typeName = type == null ? "" : type.name();
-        // 工作台（WORKBENCH）与玩家 2x2 合成（CRAFTING）的产出格均为第 1 格
+
         if ((typeName.contains("WORKBENCH") || typeName.contains("CRAFTING")) && rawSlot == 0)
         {
             if (top.getItem(0) != null)
@@ -229,7 +202,7 @@ public class ExperienceListener implements Listener
         }
         if (isMerchantWindow(top))
         {
-            // 村民交易窗口的产出槽固定为第 3 格（索引 2）
+
             if (rawSlot == 2)
             {
                 award(player, T_TRADE, I_TRADE, () -> plugin.getExperienceConfig().getTradingExp());
@@ -238,7 +211,7 @@ public class ExperienceListener implements Listener
         }
         if (isBrewingWindow(top, typeName))
         {
-            // 仅"放入材料"才算酿造；从酿造台取回材料不发奖（否则反复存取可刷经验）
+
             if (!isPlacingAction(actionName)) return;
             ItemStack cursor = event.getCursor();
             if (cursor == null || cursor.getType() == null) return;
@@ -247,12 +220,10 @@ public class ExperienceListener implements Listener
         }
     }
 
-    // ==================== 公会升级播报（玩家体验） ====================
-
     @EventHandler(priority = EventPriority.MONITOR)
     public void onGuildLevelUp(GuildLevelUpEvent event)
     {
-        // API 可能在异步线程触发升级事件，标题与聊天必须在主线程发送
+
         if (!Bukkit.isPrimaryThread())
         {
             Bukkit.getScheduler().runTask(plugin, () -> broadcastLevelUp(event));
@@ -279,9 +250,6 @@ public class ExperienceListener implements Listener
         }
     }
 
-    // ==================== 仅新版本可用（条件注册） ====================
-
-    /** 1.13+ 繁殖 / 1.12+ 成就，仅在类存在时注册 */
     private class Modern implements Listener
     {
         @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -307,17 +275,12 @@ public class ExperienceListener implements Listener
         }
     }
 
-    // ==================== 内部工具 ====================
-
-    /**
-     * 统一的发奖入口：功能开关 -> 公会在册 -> 配置值 -> 限流 -> 交给管理器（含每日上限/加成）
-     */
     private void award(Player player, int type, long intervalMs, LongSupplier expSupplier)
     {
         if (player == null) return;
         if (!plugin.getFeatureConfig().isExperienceEnabled()) return;
         UUID uuid = player.getUniqueId();
-        // 未加入公会的玩家无需任何后续计算
+
         if (!plugin.getGuildManager().isInGuild(uuid)) return;
         long exp = expSupplier.getAsLong();
         if (exp <= 0L) return;
@@ -332,7 +295,6 @@ public class ExperienceListener implements Listener
         plugin.getGuildManager().addExperience(uuid, exp);
     }
 
-    /** 击杀者获取：怪物用反射取 Mob#getKiller（1.13+），1.8 下静默降级不报错 */
     private Player safeGetKiller(Entity entity)
     {
         try
@@ -348,7 +310,6 @@ public class ExperienceListener implements Listener
         }
     }
 
-    /** 放入类动作判定（用名称比较，避免引用旧版本不存在的枚举常量） */
     private static boolean isPlacingAction(String actionName)
     {
         return actionName.startsWith("PLACE") || actionName.startsWith("HOTBAR_")
@@ -372,7 +333,7 @@ public class ExperienceListener implements Listener
     {
         if (!typeName.contains("BREWING")) return false;
         int size = inventory.getSize();
-        // 1.8 酿造台窗口 5 格（材料+燃料+3瓶），1.9+ 为 7 格（增加药水槽）
+
         return size == 5 || size == 7;
     }
 
@@ -389,7 +350,7 @@ public class ExperienceListener implements Listener
     {
         if (list == null || list.isEmpty()) return Collections.emptySet();
         Set<String> set = new HashSet<>(list.size() * 2);
-        // 复制一份快照，避免配置热重载时并发修改
+
         List<String> snapshot = new ArrayList<>(list);
         for (String value : snapshot)
         {
@@ -398,7 +359,6 @@ public class ExperienceListener implements Listener
         return set;
     }
 
-    /** 定期清理长期不活跃玩家的限流记录，防止 Map 无限增长 */
     private void startStaleCleanup()
     {
         plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, () ->

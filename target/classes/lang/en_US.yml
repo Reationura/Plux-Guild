@@ -7,7 +7,9 @@ plugin.enabling: Enabling Guild
 plugin.enabled: Guild plugin enabled!
 plugin.disabling: Disabling Guild
 plugin.disabled: Guild plugin disabled!
-plugin.author: Author: ya_xzer21145
+plugin.author: "Author: Reationura(ya_xzer21145)"
+message.prefix: "&8[&6Guild&8] &r"
+update.available: "&e[Guild] &aNew version &f%latest% &7(current %current%)&a is available!"
 plugin.version: v3.0.4
 
 guild.created: "&aSuccessfully created guild: %name%"

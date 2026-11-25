@@ -26,8 +26,11 @@ public class PlayerListener implements Listener
     public void onPlayerJoin(PlayerJoinEvent event)
     {
         Player player = event.getPlayer();
-        // 异步确保公会币账户行存在（首次加入发放 initial-balance 初始余额）
         plugin.getGuildManager().ensurePlayerCurrencyRow(player.getUniqueId());
+        if (plugin.getUpdateChecker() != null)
+        {
+            plugin.getUpdateChecker().notifyOnJoin(player);
+        }
         Guild guild = plugin.getGuildManager().getPlayerGuild(player.getUniqueId());
         if (guild == null) return;
         for (GuildMember member : guild.getMembers().values())
@@ -47,8 +50,7 @@ public class PlayerListener implements Listener
     public void onPlayerQuit(PlayerQuitEvent event)
     {
         Player player = event.getPlayer();
-        // 3.0.8：下线时清理挂起的聊天输入与 GUI 状态，
-        // 修复静态映射泄漏及玩家下次上线第一条聊天消息被误吞的 BUG
+
         plugin.getChatInputListener().removePendingAction(player.getUniqueId());
         InventoryListener.cleanupPlayer(player.getUniqueId());
         GuildMemberSettingsGUI.removeTargetUuid(player);
@@ -67,6 +69,4 @@ public class PlayerListener implements Listener
         }
     }
 
-    // 3.0.9：玩家击杀的公会经验发奖已整体迁移到 ExperienceListener.onEntityDeath 统一处理
-    // （旧路径漏掉了 features.yml 的 experience 总开关与限流，并会与新监听器重复计入）
 }

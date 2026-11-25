@@ -13,8 +13,7 @@ public class ShopConfig extends SimpleFileConfig
     private boolean showLockedItems;
     private String lockedDisplayName;
     private List<String> lockedLore;
-    // 不能在字段初始化器中创建：父类 SimpleFileConfig 构造函数会先于字段初始化器
-    // 调用 onLoad()，此时 items 仍为 null，直接 clear 会抛 NullPointerException
+
     private Map<String, ShopItemEntry> items;
 
     public ShopConfig(GuildPlugin plugin)

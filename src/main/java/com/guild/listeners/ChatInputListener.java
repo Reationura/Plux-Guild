@@ -87,7 +87,7 @@ public class ChatInputListener implements Listener
                 player.sendMessage(plugin.getMessage("guild.name-length-invalid") .replace("%min%", String.valueOf(minLen)) .replace("%max%", String.valueOf(maxLen)));
                 return;
             }
-            // 正则改为配置驱动（guild.yml name-regex），修复旧版硬编码导致配置失效
+
             String regex = plugin.getGuildConfig().getNameRegex();
             if (regex == null || regex.isEmpty())
             {
@@ -126,7 +126,7 @@ public class ChatInputListener implements Listener
                 registerPendingAction(player.getUniqueId(), "guild_tag_for_create", guildName);
                 return;
             }
-            // 3.0.8：创建流程切回主线程执行，GuildCreateEvent 不能在异步线程触发
+
             final String finalTag = input;
             Bukkit.getScheduler().runTask(plugin, () -> {
                 Guild guild = plugin.getGuildManager().createGuild(guildName, player);
@@ -160,7 +160,7 @@ public class ChatInputListener implements Listener
                 player.sendMessage(plugin.getMessage("guild.no-permission"));
                 return;
             }
-            // 3.0.9：标签修改统一走管理器，使 guild.yml tag-change-cooldown 生效
+
             if (plugin.getGuildManager().changeTag(guild, input, player.getUniqueId()) == 0)
             {
                 player.sendMessage(plugin.getMessage("guild.tag-updated").replace("%tag%", input));
@@ -195,7 +195,6 @@ public class ChatInputListener implements Listener
             Bukkit.getScheduler().runTask(plugin, () -> GuildManageGUI.openGUI(plugin, finalPlayer, finalGuild));
         }
 
-        // 3.0.8：新增 GUI 重命名的聊天输入处理（旧版重命名按钮错误地走了公告处理）
         private void handleGuildRename(Player player, String input)
         {
             if (input.equalsIgnoreCase("cancel") || input.equalsIgnoreCase("C"))
@@ -251,7 +250,7 @@ public class ChatInputListener implements Listener
             }
             final String oldName = guild.getName();
             final UUID operatorUuid = player.getUniqueId();
-            // 改名在主线程执行，原地迁移数据（成员/等级/银行不丢失）
+
             Bukkit.getScheduler().runTask(plugin, () ->
             {
                 if (plugin.getGuildManager().renameGuild(oldName, input, operatorUuid))
@@ -361,7 +360,7 @@ public class ChatInputListener implements Listener
                 return;
             }
             guild.setMemberNickname(targetUuid, input);
-            // 3.0.8：昵称修改及时入库，避免重启后丢失
+
             plugin.getGuildManager().scheduleSavePublic(guild);
             String targetName = plugin.getGuildManager().getPlayerNameCached(targetUuid);
             player.sendMessage(ChatColor.GREEN + "已将 " + targetName + " 的昵称设置为: " + input);
@@ -384,7 +383,7 @@ public class ChatInputListener implements Listener
                 return;
             }
             String guildName = (String) context;
-            // 3.0.8：离开处理切回主线程，GuildLeaveEvent 不能在异步线程触发
+
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (plugin.getGuildManager().leaveGuild(player.getUniqueId()))
                 {
@@ -407,7 +406,7 @@ public class ChatInputListener implements Listener
                 return;
             }
             String guildName = (String) context;
-            // 3.0.8：解散处理切回主线程，GuildDisbandEvent 不能在异步线程触发
+
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (plugin.getGuildManager().disbandGuild(guildName, player.getUniqueId()))
                 {

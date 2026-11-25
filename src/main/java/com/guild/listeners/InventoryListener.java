@@ -253,7 +253,7 @@ public class InventoryListener implements Listener
                                                 else if (name.contains("重命名"))
                                                 {
                                                     player.closeInventory();
-                                                    // 3.0.8：修复重命名误注册为 guild_motd 导致改名实际修改公告的 BUG
+
                                                     chatInputListener.registerPendingAction( player.getUniqueId(), "guild_rename", null);
                                                     player.sendMessage(ChatColor.YELLOW + "请输入新名称:");
                                                 }
@@ -338,7 +338,7 @@ public class InventoryListener implements Listener
                                                             player.sendMessage(ChatColor.RED + "该玩家已经是管理员或会长");
                                                             return;
                                                         }
-                                                        // 3.0.9：GUI 晋升统一走管理器，使权限/职位上限/冷却校验与事件一致生效
+
                                                         if (!plugin.getGuildManager().promoteMember(guild.getName(), targetUuid, player.getUniqueId()))
                                                         {
                                                             if (targetMember.getRole() != GuildRole.MEMBER)
@@ -381,7 +381,7 @@ public class InventoryListener implements Listener
                                                             player.sendMessage(ChatColor.RED + "不能降级会长");
                                                             return;
                                                         }
-                                                        // 3.0.9：GUI 降级统一走管理器（含 allow-self-demote / demote-cooldown）
+
                                                         if (!plugin.getGuildManager().demoteMember(guild.getName(), targetUuid, player.getUniqueId()))
                                                         {
                                                             if (targetMember.getRole() == GuildRole.MEMBER)
@@ -420,7 +420,7 @@ public class InventoryListener implements Listener
                                                             return;
                                                         }
                                                         String targetName = plugin.getGuildManager().getPlayerNameCached(targetUuid);
-                                                        // 3.0.9：GUI 踢人统一走管理器，触发 GuildKickEvent 并记录加入冷却
+
                                                         if (!plugin.getGuildManager().kickMember(guild.getName(), targetUuid, player.getUniqueId()))
                                                         {
                                                             player.sendMessage(ChatColor.RED + "踢出失败，目标职位高于你或数据异常");
@@ -869,11 +869,11 @@ public class InventoryListener implements Listener
                                                                                                     reopenCurrentAnvil(player);
                                                                                                     return;
                                                                                                 }
-                                                                                                // 3.0.8：createGuild 内部已统一扣费，不再预扣/退款，避免 GUI 创建路径双重扣费
+
                                                                                                 Guild guild = plugin.getGuildManager().createGuild(guildName, player);
                                                                                                 if (guild == null)
                                                                                                 {
-                                                                                                    // 名称重复时给出明确提示，其余失败原因（权限/资金）由管理器发送
+
                                                                                                     if (plugin.getGuildManager().getGuild(guildName) != null)
                                                                                                     {
                                                                                                         player.sendMessage(plugin.getMessage("guild.already-exists"));

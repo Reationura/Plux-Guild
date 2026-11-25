@@ -8,8 +8,10 @@ plugin.enabling: 正在启用 Guild
 plugin.enabled: Guild 插件已启用!
 plugin.disabling: 正在禁用 Guild
 plugin.disabled: Guild 插件已禁用!
-plugin.author: 作者: ya_xzer21145
+plugin.author: "作者: Reationura(ya_xzer21145)"
 plugin.version: v3.0.4
+message.prefix: "&8[&6公会&8] &r"
+update.available: "&e[Guild] &a发现新版本 &f%latest% &7(当前 %current%)&a，请及时更新！"
 
 # ---------- 公会核心 ----------
 guild.created: "&a成功创建公会: %name%"
