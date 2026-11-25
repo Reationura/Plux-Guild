@@ -165,6 +165,11 @@ public class GuildGUI
 
             private static String getPlayerName(UUID uuid)
             {
+
+                if (com.guild.api.GuildAPI.isApiReady())
+                {
+                    return com.guild.api.GuildAPI.getInstance().getPlugin().getGuildManager().getPlayerNameCached(uuid);
+                }
                 OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
                 return op.getName() != null ? op.getName() : "未知";
             }}

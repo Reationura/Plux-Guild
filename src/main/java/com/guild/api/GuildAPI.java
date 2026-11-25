@@ -9,17 +9,14 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+@Deprecated
 public final class GuildAPI implements GuildAPIProvider
 {
     private static volatile GuildAPI instance;
 
     private final GuildPlugin plugin;
-
-    private final Map<Class<? extends org.bukkit.event.Event>, Listener> registeredListeners = new ConcurrentHashMap<>();
 
     private GuildAPI(GuildPlugin plugin)
     {
@@ -29,6 +26,7 @@ public final class GuildAPI implements GuildAPIProvider
     public static void init(GuildPlugin plugin)
     {
         instance = new GuildAPI(plugin);
+        com.guild.api.v2.GuildApiV2Provider.init(plugin);
     }
 
     public static GuildAPI getInstance()
@@ -38,64 +36,79 @@ public final class GuildAPI implements GuildAPIProvider
 
     public static boolean isApiReady()
     {
-        return instance != null && instance.plugin != null;
+        return instance != null;
     }
 
     public static GuildAPI requireInstance() throws IllegalStateException
     {
         if (!isApiReady())
         {
-            throw new IllegalStateException("GuildAPI 尚未初始化！请确保在 onEnable 之后调用。" + " 可通过 GuildAPI.isApiReady() 检查。");
+            throw new IllegalStateException("GuildAPI 尚未初始化！请确保在 onEnable 之后调用，可通过 GuildAPI.isApiReady() 检查。");
         }
         return instance;
     }
 
-@Override
-public boolean isReady()
+    @Override
+    public boolean isReady()
     {
-        return instance != null && plugin != null;
+        return instance != null;
     }
 
-@Override
-public GuildPlugin getPlugin()
+    @Override
+    public GuildPlugin getPlugin()
     {
         return plugin;
     }
 
-@Override
-public GuildData getGuild(String name)
+    @Override
+    public GuildData getGuild(String name)
     {
         Guild guild = plugin.getGuildManager().getGuild(name);
         return guild != null ? new GuildData(guild) : null;
     }
 
-@Override
-public GuildData getGuildByTag(String tag)
+    @Override
+    public GuildData getGuildByTag(String tag)
     {
         if (tag == null || tag.isEmpty()) return null;
-        String lowerTag = tag.toLowerCase();
-        return plugin.getGuildManager().getGuilds().values().stream() .filter(g -> g.getTag() != null && g.getTag().equalsIgnoreCase(lowerTag)) .findFirst() .map(GuildData::new) .orElse( null);
+        for (Guild guild : plugin.getGuildManager().getGuilds().values())
+        {
+            String guildTag = guild.getTag();
+            if (guildTag != null && guildTag.equalsIgnoreCase(tag))
+            {
+                return new GuildData(guild);
+            }
+        }
+        return null;
     }
 
-@Override
-public List<GuildData> searchGuilds(String keyword)
+    @Override
+    public List<GuildData> searchGuilds(String keyword)
     {
-        if (keyword == null || keyword.trim().isEmpty())
-        {
-            return Collections.emptyList();
-        }
+        if (keyword == null || keyword.trim().isEmpty()) return Collections.emptyList();
         String kw = keyword.trim().toLowerCase();
-        return plugin.getGuildManager().getGuilds().values().stream() .map(GuildData::new) .filter(g -> g.getName().toLowerCase().contains(kw) || (g.getTag() != null && g.getTag().toLowerCase().contains(kw))) .sorted((a, b) ->
+        List<GuildData> matches = new ArrayList<>();
+        for (Guild guild : plugin.getGuildManager().getGuilds().values())
+        {
+            String name = guild.getName().toLowerCase();
+            String tag = guild.getTag() != null ? guild.getTag().toLowerCase() : "";
+            if (name.contains(kw) || tag.contains(kw))
+            {
+                matches.add(new GuildData(guild));
+            }
+        }
+        matches.sort((a, b) ->
         {
             boolean aExact = a.getName().equalsIgnoreCase(kw);
             boolean bExact = b.getName().equalsIgnoreCase(kw);
             if (aExact != bExact) return aExact ? -1 : 1;
             return Integer.compare(b.getLevel(), a.getLevel());
-        }) .collect(Collectors.toList());
+        });
+        return matches;
     }
 
-@Override
-public GuildData getPlayerGuild(UUID playerUuid)
+    @Override
+    public GuildData getPlayerGuild(UUID playerUuid)
     {
         Guild guild = plugin.getGuildManager().getPlayerGuild(playerUuid);
         return guild != null ? new GuildData(guild) : null;
@@ -103,18 +116,18 @@ public GuildData getPlayerGuild(UUID playerUuid)
 
     public String getPlayerGuildName(UUID playerUuid)
     {
-        GuildData g = getPlayerGuild(playerUuid);
-        return g != null ? g.getName() : null;
+        GuildData data = getPlayerGuild(playerUuid);
+        return data != null ? data.getName() : null;
     }
 
-@Override
-public boolean isInGuild(UUID playerUuid)
+    @Override
+    public boolean isInGuild(UUID playerUuid)
     {
         return plugin.getGuildManager().isInGuild(playerUuid);
     }
 
-@Override
-public Map<String, GuildData> getAllGuilds()
+    @Override
+    public Map<String, GuildData> getAllGuilds()
     {
         Map<String, GuildData> result = new LinkedHashMap<>();
         plugin.getGuildManager().getGuilds().forEach((name, guild) -> result.put(name, new GuildData(guild)));
@@ -123,18 +136,27 @@ public Map<String, GuildData> getAllGuilds()
 
     public List<GuildData> getAllGuildList()
     {
-        return plugin.getGuildManager().getGuilds().values().stream() .map(GuildData::new) .collect(Collectors.toList());
+        List<GuildData> result = new ArrayList<>();
+        for (Guild guild : plugin.getGuildManager().getGuilds().values())
+        {
+            result.add(new GuildData(guild));
+        }
+        return result;
     }
 
-@Override
-public List<GuildData> getTopGuilds(int limit)
+    @Override
+    public List<GuildData> getTopGuilds(int limit)
     {
         if (limit <= 0) return Collections.emptyList();
-        return plugin.getGuildManager().getGuilds().values().stream() .map(GuildData::new) .sorted(Comparator.comparingInt(GuildData::getLevel).reversed()) .limit(limit) .collect(Collectors.toList());
+        return plugin.getGuildManager().getGuilds().values().stream()
+            .map(GuildData::new)
+            .sorted(Comparator.comparingInt(GuildData::getLevel).reversed())
+            .limit(limit)
+            .collect(Collectors.toList());
     }
 
-@Override
-public String getMemberRole(UUID playerUuid)
+    @Override
+    public String getMemberRole(UUID playerUuid)
     {
         Guild guild = plugin.getGuildManager().getPlayerGuild(playerUuid);
         if (guild == null) return null;
@@ -142,92 +164,64 @@ public String getMemberRole(UUID playerUuid)
         return member != null ? member.getRole().name() : null;
     }
 
-@Override
-public List<UUID> getOnlineMembers(String guildName)
+    @Override
+    public List<UUID> getOnlineMembers(String guildName)
     {
         Guild guild = plugin.getGuildManager().getGuild(guildName);
         if (guild == null) return Collections.emptyList();
-        return guild.getMembers().keySet().stream() .filter(uuid ->
+        List<UUID> online = new ArrayList<>();
+        for (UUID uuid : guild.getMembers().keySet())
         {
-            Player p = Bukkit.getPlayer(uuid);
-            return p != null && p.isOnline();
-        }) .collect(Collectors.toList());
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null && player.isOnline()) online.add(uuid);
+        }
+        return online;
     }
 
-@Override
-public int getOnlineCount(String guildName)
+    @Override
+    public int getOnlineCount(String guildName)
     {
-        Guild guild = plugin.getGuildManager().getGuild(guildName);
-        if (guild == null) return 0;
-        return (int) guild.getMembers().keySet().stream() .filter(uuid ->
-        {
-            Player p = Bukkit.getPlayer(uuid);
-            return p != null && p.isOnline();
-        }) .count();
+        return getOnlineMembers(guildName).size();
     }
 
     public GuildData createGuild(String name, Player owner)
     {
-        GuildCreateEvent event = new GuildCreateEvent(owner, name, null);
-        Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled()) return null;
-        Guild guild = plugin.getGuildManager().createGuild(event.getGuildName(), owner);
-        if (guild != null && event.getGuildTag() != null && !event.getGuildTag().isEmpty())
-        {
-            guild.setTag(event.getGuildTag());
-            plugin.getDatabaseManager().saveGuild(guild);
-        }
+        Guild guild = plugin.getGuildManager().createGuild(name, owner);
         return guild != null ? new GuildData(guild) : null;
     }
 
     public GuildData createGuild(String name, String tag, Player owner)
     {
-        GuildCreateEvent event = new GuildCreateEvent(owner, name, tag);
-        Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled()) return null;
-        Guild guild = plugin.getGuildManager().createGuild(event.getGuildName(), owner);
-        if (guild != null)
+        Guild guild = plugin.getGuildManager().createGuild(name, owner);
+        if (guild != null && tag != null && !tag.isEmpty()
+            && (guild.getTag() == null || guild.getTag().isEmpty()))
         {
-            String finalTag = event.getGuildTag() != null ? event.getGuildTag() : tag;
-            guild.setTag(finalTag);
-            plugin.getDatabaseManager().saveGuild(guild);
+            guild.setTag(tag);
+            plugin.getGuildManager().scheduleSavePublic(guild);
         }
         return guild != null ? new GuildData(guild) : null;
     }
 
     public boolean disbandGuild(String name, OfflinePlayer disbander)
     {
-        boolean result = plugin.getGuildManager().disbandGuild(name, disbander.getUniqueId());
-        if (result)
-        {
-            Bukkit.getPluginManager().callEvent( new GuildDisbandEvent(name, disbander));
-        }
-        return result;
+        Guild guild = name != null ? plugin.getGuildManager().getGuild(name) : null;
+        if (guild == null) return false;
+        UUID operatorUuid = disbander != null ? disbander.getUniqueId() : guild.getOwner();
+        return plugin.getGuildManager().disbandGuild(guild.getName(), operatorUuid);
     }
 
     public boolean joinGuild(Player player, String guildName)
     {
-        GuildJoinEvent event = new GuildJoinEvent(player, guildName);
-        Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled()) return false;
         return plugin.getGuildManager().joinGuild(guildName, player);
     }
 
     public boolean leaveGuild(Player player)
     {
-        Guild guild = plugin.getGuildManager().getPlayerGuild(player.getUniqueId());
-        if (guild == null) return false;
-        GuildLeaveEvent event = new GuildLeaveEvent(player, guild.getName());
-        Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled()) return false;
         return plugin.getGuildManager().leaveGuild(player.getUniqueId());
     }
 
     public boolean kickMember(String guildName, UUID targetUuid, OfflinePlayer kicker)
     {
-        GuildKickEvent event = new GuildKickEvent(guildName, targetUuid, kicker);
-        Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled()) return false;
         return plugin.getGuildManager().kickMember(guildName, targetUuid, kicker != null ? kicker.getUniqueId() : null);
     }
 
@@ -265,35 +259,34 @@ public int getOnlineCount(String guildName)
     {
         GuildManager.GuildInvite invite = plugin.getGuildManager().getInvite(playerUuid);
         if (invite == null) return null;
-        return new GuildInviteInfo( invite.getGuildName(), invite.getInviterUuid(), Bukkit.getOfflinePlayer(invite.getInviterUuid()).getName(), invite.getTargetUuid(), invite.getTargetName(), invite.getInviteTime() );
+        return new GuildInviteInfo(
+            invite.getGuildName(),
+            invite.getInviterUuid(),
+            Bukkit.getOfflinePlayer(invite.getInviterUuid()).getName(),
+            invite.getTargetUuid(),
+            invite.getTargetName(),
+            invite.getInviteTime());
     }
 
-@Override
-public void addExperience(UUID playerUuid, long amount)
+    @Override
+    public void addExperience(UUID playerUuid, long amount)
     {
         plugin.getGuildManager().addExperience(playerUuid, amount);
     }
 
     public boolean upgradeGuild(String guildName, UUID playerUuid)
     {
-        Guild guild = plugin.getGuildManager().getGuild(guildName);
-        int oldLevel = guild != null ? guild.getLevel() : 0;
-        boolean success = plugin.getGuildManager().upgradeGuild(guildName, playerUuid);
-        if (success && guild != null)
-        {
-            Bukkit.getPluginManager().callEvent( new GuildLevelUpEvent(guildName, oldLevel, guild.getLevel()));
-        }
-        return success;
+        return plugin.getGuildManager().upgradeGuild(guildName, playerUuid);
     }
 
-@Override
-public boolean depositToBank(String guildName, UUID playerUuid, long amount)
+    @Override
+    public boolean depositToBank(String guildName, UUID playerUuid, long amount)
     {
         return plugin.getGuildManager().depositToBank(guildName, playerUuid, amount);
     }
 
-@Override
-public boolean withdrawFromBank(String guildName, UUID playerUuid, long amount)
+    @Override
+    public boolean withdrawFromBank(String guildName, UUID playerUuid, long amount)
     {
         return plugin.getGuildManager().withdrawFromBank(guildName, playerUuid, amount);
     }
@@ -303,110 +296,145 @@ public boolean withdrawFromBank(String guildName, UUID playerUuid, long amount)
         return plugin.getGuildManager().getGuildBalance(guildName);
     }
 
-@Override
-public CompletableFuture<GuildData> createGuildAsync(String name, Player owner)
+    private <T> CompletableFuture<T> supplyOnMainThread(java.util.function.Supplier<T> supplier)
     {
-        return CompletableFuture.supplyAsync(() -> createGuild(name, owner), task -> Bukkit.getScheduler().runTask(plugin, task));
+        CompletableFuture<T> future = new CompletableFuture<>();
+        Runnable task = () ->
+        {
+            try
+            {
+                future.complete(supplier.get());
+            }
+            catch (Exception e)
+            {
+                future.completeExceptionally(e);
+            }
+        };
+        try
+        {
+            if (Bukkit.isPrimaryThread())
+            {
+                task.run();
+            }
+            else
+            {
+                Bukkit.getScheduler().runTask(plugin, task);
+            }
+        }
+        catch (Exception e)
+        {
+            future.completeExceptionally(e);
+        }
+        return future;
     }
 
-@Override
-public CompletableFuture<GuildData> createGuildAsync(String name, String tag, Player owner)
+    @Override
+    public CompletableFuture<GuildData> createGuildAsync(String name, Player owner)
     {
-        return CompletableFuture.supplyAsync(() -> createGuild(name, tag, owner), task -> Bukkit.getScheduler().runTask(plugin, task));
+        return supplyOnMainThread(() -> createGuild(name, owner));
     }
 
-@Override
-public CompletableFuture<Boolean> disbandGuildAsync(String name)
+    @Override
+    public CompletableFuture<GuildData> createGuildAsync(String name, String tag, Player owner)
     {
-        return CompletableFuture.supplyAsync(() -> disbandGuild(name, null), task -> Bukkit.getScheduler().runTask(plugin, task));
+        return supplyOnMainThread(() -> createGuild(name, tag, owner));
     }
 
-@Override
-public CompletableFuture<Boolean> joinGuildAsync(Player player, String guildName)
+    @Override
+    public CompletableFuture<Boolean> disbandGuildAsync(String name)
     {
-        return CompletableFuture.supplyAsync(() -> joinGuild(player, guildName), task -> Bukkit.getScheduler().runTask(plugin, task));
+        return supplyOnMainThread(() -> disbandGuild(name, null));
     }
 
-@Override
-public CompletableFuture<Boolean> leaveGuildAsync(Player player)
+    @Override
+    public CompletableFuture<Boolean> joinGuildAsync(Player player, String guildName)
     {
-        return CompletableFuture.supplyAsync(() -> leaveGuild(player), task -> Bukkit.getScheduler().runTask(plugin, task));
+        return supplyOnMainThread(() -> joinGuild(player, guildName));
     }
 
-@Override
-public CompletableFuture<Boolean> kickMemberAsync(String guildName, UUID target, UUID kicker)
+    @Override
+    public CompletableFuture<Boolean> leaveGuildAsync(Player player)
     {
-        return CompletableFuture.supplyAsync(() -> kickMember(guildName, target, kicker != null ? Bukkit.getOfflinePlayer(kicker) : null), task -> Bukkit.getScheduler().runTask(plugin, task));
+        return supplyOnMainThread(() -> leaveGuild(player));
     }
 
-@Override
-public CompletableFuture<Boolean> upgradeGuildAsync(String guildName, UUID playerUuid)
+    @Override
+    public CompletableFuture<Boolean> kickMemberAsync(String guildName, UUID target, UUID kicker)
     {
-        return CompletableFuture.supplyAsync(() -> upgradeGuild(guildName, playerUuid), task -> Bukkit.getScheduler().runTask(plugin, task));
+        return supplyOnMainThread(() -> kickMember(guildName, target, kicker != null ? Bukkit.getOfflinePlayer(kicker) : null));
     }
 
-@Override
-public void openMainGUI(Player player)
+    @Override
+    public CompletableFuture<Boolean> upgradeGuildAsync(String guildName, UUID playerUuid)
+    {
+        return supplyOnMainThread(() -> upgradeGuild(guildName, playerUuid));
+    }
+
+    @Override
+    public void openMainGUI(Player player)
     {
         GuildGUI.openGUI(plugin, player);
     }
 
     public void openBankGUI(Player player, GuildData guild)
     {
-        if (guild != null)
+        if (player != null && guild != null)
         {
             com.guild.gui.GuildBankGUI.openBankGUI(plugin, player, guild.getInternalGuild());
-        }}
+        }
+    }
 
-        public void openShopGUI(Player player, GuildData guild)
+    public void openShopGUI(Player player, GuildData guild)
+    {
+        if (player != null && guild != null)
         {
-            if (guild != null)
-            {
-                com.guild.gui.GuildShopGUI.openShopGUI(plugin, player, guild.getInternalGuild());
-            }}
+            com.guild.gui.GuildShopGUI.openShopGUI(plugin, player, guild.getInternalGuild());
+        }
+    }
 
-            public void registerListener(Listener listener)
-            {
-                Bukkit.getPluginManager().registerEvents(listener, plugin);
-            }
+    public void registerListener(Listener listener)
+    {
+        if (listener != null)
+        {
+            Bukkit.getPluginManager().registerEvents(listener, plugin);
+        }
+    }
 
-            public void unregisterAllListeners()
-            {
-                registeredListeners.clear();
-            }
+    @Override
+    public String getMessage(String key)
+    {
+        return plugin.getMessage(key);
+    }
 
-@Override
-public String getMessage(String key)
-            {
-                return plugin.getMessage(key);
-            }
+    public String getMessage(String key, String... replacements)
+    {
+        return plugin.getMessage(key, replacements);
+    }
 
-            public String getMessage(String key, String... replacements)
-            {
-                return plugin.getMessage(key, replacements);
-            }
+    public void reloadConfig()
+    {
+        plugin.reloadAll();
+    }
 
-            public void reloadConfig()
-            {
-                plugin.reloadConfig();
-                plugin.getGUIConfig().reloadConfig();
-            }
+    public int getTotalGuildCount()
+    {
+        return plugin.getGuildManager().getGuilds().size();
+    }
 
-            public int getTotalGuildCount()
-            {
-                return plugin.getGuildManager().getGuilds().size();
-            }
+    public int getTotalMemberCount()
+    {
+        int count = 0;
+        for (Guild guild : plugin.getGuildManager().getGuilds().values())
+        {
+            count += guild.getMembers().size();
+        }
+        return count;
+    }
 
-            public int getTotalMemberCount()
-            {
-                Set<UUID> allMembers = new HashSet<>();
-                plugin.getGuildManager().getGuilds().values() .forEach(g -> allMembers.addAll(g.getMembers().keySet()));
-                return allMembers.size();
-            }
-
-            public double getAverageLevel()
-            {
-                Map<String, Guild> guilds = plugin.getGuildManager().getGuilds();
-                if (guilds.isEmpty()) return 0.0;
-                return guilds.values().stream() .mapToInt(Guild::getLevel) .average() .orElse(0.0);
-            }}
+    public double getAverageLevel()
+    {
+        Map<String, Guild> guilds = plugin.getGuildManager().getGuilds();
+        if (guilds.isEmpty()) return 0.0;
+        return guilds.values().stream().mapToInt(Guild::getLevel).average().orElse(0.0);
+    }
+}

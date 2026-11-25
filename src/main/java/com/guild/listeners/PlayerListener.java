@@ -1,5 +1,6 @@
 package com.guild.listeners;
 import com.guild.GuildPlugin;
+import com.guild.gui.GuildMemberSettingsGUI;
 import com.guild.guild.Guild;
 import com.guild.guild.GuildMember;
 import com.guild.guild.PlayerSettings;
@@ -9,7 +10,6 @@ import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
@@ -26,8 +26,11 @@ public class PlayerListener implements Listener
     public void onPlayerJoin(PlayerJoinEvent event)
     {
         Player player = event.getPlayer();
-        // 异步确保公会币账户行存在（首次加入发放 initial-balance 初始余额）
         plugin.getGuildManager().ensurePlayerCurrencyRow(player.getUniqueId());
+        if (plugin.getUpdateChecker() != null)
+        {
+            plugin.getUpdateChecker().notifyOnJoin(player);
+        }
         Guild guild = plugin.getGuildManager().getPlayerGuild(player.getUniqueId());
         if (guild == null) return;
         for (GuildMember member : guild.getMembers().values())
@@ -47,6 +50,10 @@ public class PlayerListener implements Listener
     public void onPlayerQuit(PlayerQuitEvent event)
     {
         Player player = event.getPlayer();
+
+        plugin.getChatInputListener().removePendingAction(player.getUniqueId());
+        InventoryListener.cleanupPlayer(player.getUniqueId());
+        GuildMemberSettingsGUI.removeTargetUuid(player);
         Guild guild = plugin.getGuildManager().getPlayerGuild(player.getUniqueId());
         if (guild == null) return;
         for (GuildMember member : guild.getMembers().values())
@@ -62,15 +69,4 @@ public class PlayerListener implements Listener
         }
     }
 
-    @EventHandler
-    public void onPlayerDeath(PlayerDeathEvent event)
-    {
-        Player victim = event.getEntity();
-        Player killer = victim.getKiller();
-        if (killer != null && killer != victim)
-        {
-            long exp = plugin.getExperienceConfig().getPlayerKillExp();
-            plugin.getGuildManager().addExperience(killer.getUniqueId(), exp);
-        }
-    }
 }

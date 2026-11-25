@@ -15,13 +15,16 @@ import com.guild.currency.GuildCurrency;
 import com.guild.database.DatabaseManager;
 import com.guild.guild.GuildManager;
 import com.guild.listeners.ChatInputListener;
+import com.guild.listeners.ExperienceListener;
 import com.guild.listeners.InventoryListener;
 import com.guild.listeners.PlayerListener;
 import com.guild.papi.GuildPlaceholderExpansion;
+import com.guild.utils.UpdateChecker;
 import com.guild.utils.VersionCompat;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandExecutor;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import java.io.*;
@@ -30,6 +33,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 public class GuildPlugin extends JavaPlugin
@@ -56,7 +60,7 @@ public class GuildPlugin extends JavaPlugin
 
     private GuildCurrency guildCurrency;
 
-    private final Map<String, String> messages = new HashMap<>();
+    private final Map<String, String> messages = new ConcurrentHashMap<>();
 
     private String currentLanguage;
 
@@ -64,22 +68,22 @@ public class GuildPlugin extends JavaPlugin
 
     private ChatInputListener chatInputListener;
 
+    private ExperienceListener experienceListener;
+
     private volatile long lastDailyResetDay;
 
-    private static final double CURRENT_CONFIG_VERSION = 1.3;
+    private UpdateChecker updateChecker;
+
+    private static final double CURRENT_CONFIG_VERSION = 1.4;
 
     @Override
     public void onEnable()
     {
         instance = this;
         saveDefaultConfig();
-        checkConfigVersion();
+        com.guild.config.ConfigMigrator.migrate(this);
         loadLanguage();
         saveLanguageFiles();
-        guildManager = new GuildManager(this);
-        databaseManager = new DatabaseManager(this);
-        databaseManager.initialize();
-        playerNameCache = new PlayerNameCache(this);
         guiConfig = new GUIConfig(this);
         featureConfig = new FeatureConfig(this);
         currencyConfig = new CurrencyConfig(this);
@@ -87,18 +91,28 @@ public class GuildPlugin extends JavaPlugin
         guildConfig = new GuildConfig(this);
         experienceConfig = new ExperienceConfig(this);
         bankConfig = new BankConfig(this);
+        guildManager = new GuildManager(this);
+        databaseManager = new DatabaseManager(this);
+        databaseManager.initialize();
+        playerNameCache = new PlayerNameCache(this);
         guildCurrency = new GuildCurrency(this);
         registerCommands();
         registerListeners();
         registerPlaceholderAPI();
         startDailyResetTask();
         GuildAPI.init(this);
+        updateChecker = new UpdateChecker(this);
+        updateChecker.start();
         printEnableMessage();
     }
 
     @Override
     public void onDisable()
     {
+        if (guildManager != null)
+        {
+            guildManager.shutdown();
+        }
         if (databaseManager != null)
         {
             databaseManager.close();
@@ -106,10 +120,6 @@ public class GuildPlugin extends JavaPlugin
         printDisableMessage();
     }
 
-    /**
-     * 每日重置任务：每分钟检测一次日期变更，
-     * 跨天时重置日常经验/贡献与银行每日限额（受 features.yml daily-reset 开关控制）
-     */
     private void startDailyResetTask()
     {
         lastDailyResetDay = LocalDate.now().toEpochDay();
@@ -128,9 +138,38 @@ public class GuildPlugin extends JavaPlugin
     {
         currentLanguage = getConfig().getString("language", "zh_cn");
         messages.clear();
-        messages.putAll(loadLanguageFile(currentLanguage));
+        Map<String, String> loaded = loadLanguageFile(currentLanguage);
+        fillMissingMessages(loaded, currentLanguage);
+        messages.putAll(loaded);
+        messages.put("plugin.version", "v" + getDescription().getVersion());
         getLogger().info("Loaded language file: " + currentLanguage + ".yml");
         getLogger().info("Default language set to: " + currentLanguage);
+    }
+
+    private void fillMissingMessages(Map<String, String> target, String lang)
+    {
+        try (InputStream inputStream = getResource("lang/" + lang + ".yml"))
+        {
+            if (inputStream == null) return;
+            YamlConfiguration bundled = YamlConfiguration.loadConfiguration(new InputStreamReader(inputStream, "UTF-8"));
+            int added = 0;
+            for (String key : bundled.getKeys(true))
+            {
+                if (target.containsKey(key)) continue;
+                String value = bundled.getString(key);
+                if (value == null || value.isEmpty()) continue;
+                target.put(key, value);
+                added++;
+            }
+            if (added > 0)
+            {
+                getLogger().info("Filled " + added + " missing message key(s) from built-in " + lang + ".yml");
+            }
+        }
+        catch (Exception e)
+        {
+            getLogger().warning("Could not fill missing message keys for " + lang + ".yml");
+        }
     }
 
     private Map<String, String> loadLanguageFile(String lang)
@@ -196,7 +235,7 @@ public class GuildPlugin extends JavaPlugin
 
     private void saveLanguageFiles()
     {
-        // 修复旧版 " en_US" 带前导空格导致英文语言文件永远无法释放的问题
+
         for (String lang : new String[]
         {
             "en_US", "zh_cn", "zh_tw"
@@ -220,17 +259,6 @@ public class GuildPlugin extends JavaPlugin
             {
                 getLogger().warning("Could not save language file: " + lang + ".yml");
             }
-        }
-    }
-
-    private void checkConfigVersion()
-    {
-        double savedVersion = getConfig().getDouble("config-version", 0.0);
-        if (savedVersion < CURRENT_CONFIG_VERSION)
-        {
-            getLogger().warning("配置文件版本较旧 (" + savedVersion + " -> " + CURRENT_CONFIG_VERSION + ")");
-            getLogger().warning("建议备份现有配置后删除 config.yml，插件将自动生成新版配置");
-            getLogger().warning("未添加的新配置项将使用默认值");
         }
     }
 
@@ -283,6 +311,13 @@ public class GuildPlugin extends JavaPlugin
         inventoryListener.setChatInputListener(chatInputListener);
         Bukkit.getPluginManager().registerEvents((Listener) inventoryListener, this);
         Bukkit.getPluginManager().registerEvents((Listener) chatInputListener, this);
+
+        experienceListener = ExperienceListener.register(this);
+    }
+
+    public ExperienceListener getExperienceListener()
+    {
+        return experienceListener;
     }
 
     private void registerPlaceholderAPI()
@@ -386,6 +421,16 @@ public class GuildPlugin extends JavaPlugin
         return playerNameCache;
     }
 
+    public UpdateChecker getUpdateChecker()
+    {
+        return updateChecker;
+    }
+
+    public String getPrefix()
+    {
+        return getMessage("message.prefix");
+    }
+
     public String getMessage(String key)
     {
         String msg = messages.get(key);
@@ -444,6 +489,15 @@ public class GuildPlugin extends JavaPlugin
         {
             bankConfig.reload();
             getLogger().info("Bank config reloaded");
+
+            if (guildManager != null)
+            {
+                int maxRecords = bankConfig.getMaxHistoryRecords();
+                for (com.guild.guild.Guild guild : guildManager.getGuilds().values())
+                {
+                    if (guild.getBank() != null) guild.getBank().setMaxRecordsPerPlayer(maxRecords);
+                }
+            }
         }
         if (guiConfig != null)
         {

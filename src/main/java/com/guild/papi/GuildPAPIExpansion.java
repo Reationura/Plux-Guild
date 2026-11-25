@@ -32,7 +32,8 @@ public class GuildPAPIExpansion extends PlaceholderExpansion
     @Override
     public String getVersion()
     {
-        return "3.0.6";
+
+        return plugin.getDescription().getVersion();
     }
 
     @Override
@@ -155,6 +156,12 @@ public class GuildPAPIExpansion extends PlaceholderExpansion
 
     private long calculateRequiredExperience(int level)
     {
-        return (long) (500.0 * level * (1 + level * 0.02));
+
+        long base = plugin.getExperienceConfig().getLevelFormulaBase();
+        double growth = plugin.getExperienceConfig().getLevelFormulaGrowthRate();
+        long required = (long) (base * level * (1 + level * growth));
+        long maxRequired = plugin.getExperienceConfig().getLevelFormulaMaxRequired();
+        if (maxRequired > 0 && required > maxRequired) required = maxRequired;
+        return required;
     }
 }

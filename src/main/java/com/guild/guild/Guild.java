@@ -23,10 +23,6 @@ public class Guild
     private final Map<String, GuildPermission> permissions = new ConcurrentHashMap<>();
     private GuildBank bank;
 
-    /**
-     * 插件主类引用（用于读取可配置的等级/成员/经验公式）
-     * 反序列化或旧调用路径下可能为 null，此时回退到内置默认值
-     */
     private final GuildPlugin plugin;
 
     public Guild(String name, UUID owner)
@@ -51,6 +47,11 @@ public class Guild
         members.put(owner, ownerMember);
         initializeDefaultPermissions();
         this.bank = new GuildBank();
+
+        if (plugin != null && plugin.getBankConfig() != null)
+        {
+            this.bank.setMaxRecordsPerPlayer(plugin.getBankConfig().getMaxHistoryRecords());
+        }
     }
 
     private void initializeDefaultPermissions()
@@ -136,6 +137,8 @@ public class Guild
         long required = getRequiredExperience();
         while (experience >= required && level < maxLevel)
         {
+
+            if (required <= 0) break;
             experience -= required;
             level++;
             leveledUp = true;

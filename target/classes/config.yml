@@ -1,38 +1,67 @@
 # ============================================================
-#  Guild 插件核心配置文件
+#  Guild 插件核心配置文件（v1.4）
 #  其他配置已拆分到独立文件：
 #    features.yml    - 功能开关
 #    currency.yml    - 货币系统
 #    guild.yml       - 公会规则
 #    experience.yml  - 经验获取
 #    bank.yml        - 银行系统
-#    gui.yml         - GUI界面
-#    shop.yml         - 公会商店
+#    gui.yml         - GUI 界面
+#    shop.yml        - 公会商店
 #  修改后使用 /guild reload 重载（无需重启服务器）
+#  升级旧版本时插件会自动备份并在原文件中补齐缺失项
 # ============================================================
 
 # ---------- 配置版本 ----------
-config-version: 1.3
+# 请勿手动修改，插件用它判断是否需要自动迁移
+config-version: 1.4
 
 # ---------- 语言设置 ----------
-# 可选值: zh_cn, zh_tw, en_us
+# 可选值: zh_cn（简体中文） / zh_tw（繁体中文） / en_US（英文）
 language: zh_cn
+
+# ---------- 消息提示设置 ----------
+message:
+  # 聊天消息前缀，支持 & 颜色代码，留空则不加前缀
+  # 第三方插件通过 API getMessage("message.prefix") 也可获取
+  prefix: "&8[&6公会&8] &r"
 
 # ---------- 数据库设置 ----------
 database:
-  # 数据库类型：sqlite / mysql
+  # 数据库类型：sqlite（无需配置，推荐） / mysql（跨服共享数据）
   type: sqlite
 
-  # --- 仅 type=mysql 时需要 ---
+  # --- 以下仅 type=mysql 时需要 ---
   host: localhost
   port: 3306
   database: guild
   username: root
   password: ""
+  # 连接池大小与获取连接超时（毫秒）
   pool-size: 10
   connection-timeout: 30000
 
+# ---------- 自动更新检查 ----------
+update-check:
+  # 是否启用自动检查更新
+  enabled: true
+
+  # 检查间隔（小时），最小为 1
+  interval-hours: 6
+
+  # 检测到新版本时在聊天栏提醒的权限（拥有该权限的在线玩家会收到提示，控制台始终提示）
+  notify-permission: guild.admin
+
+  # 更新源列表（按顺序依次尝试，任一成功即停止）。
+  # 默认三条线路：GitHub 直连 + 两个国内加速镜像，国内网络通常无需修改。
+  mirrors:
+    - "https://raw.githubusercontent.com/Reationura/Plux-Guild/refs/heads/main/version"
+    - "https://ghfast.top/https://raw.githubusercontent.com/Reationura/Plux-Guild/refs/heads/main/version"
+    - "https://gh-proxy.com/https://raw.githubusercontent.com/Reationura/Plux-Guild/refs/heads/main/version"
+
 # ---------- 调试设置 ----------
 debug:
+  # 开启后控制台输出更多调试信息
   enabled: false
+  # 在控制台显示 PlaceholderAPI 变量注册信息
   show-papi-info: true

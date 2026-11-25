@@ -1,4 +1,6 @@
 package com.guild.guild;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -8,6 +10,19 @@ public class GuildBank
     private final AtomicLong balance = new AtomicLong(0L);
     private final Map<String, Map<Long, Long>> depositHistory = new ConcurrentHashMap<>();
     private final Map<String, Map<Long, Long>> withdrawHistory = new ConcurrentHashMap<>();
+
+    private static final int DEFAULT_MAX_RECORDS_PER_PLAYER = 50;
+    private volatile int maxRecordsPerPlayer = DEFAULT_MAX_RECORDS_PER_PLAYER;
+
+    public void setMaxRecordsPerPlayer(int maxRecords)
+    {
+        this.maxRecordsPerPlayer = maxRecords > 0 ? maxRecords : DEFAULT_MAX_RECORDS_PER_PLAYER;
+    }
+
+    public int getMaxRecordsPerPlayer()
+    {
+        return maxRecordsPerPlayer;
+    }
 
     public long getBalance()
     {
@@ -39,14 +54,30 @@ public class GuildBank
 
     public void addDepositRecord(String playerName, long amount)
     {
-        depositHistory.computeIfAbsent(playerName, k -> new ConcurrentHashMap<>())
-            .put(System.currentTimeMillis(), amount);
+        Map<Long, Long> records = depositHistory.computeIfAbsent(playerName, k -> new ConcurrentHashMap<>());
+        records.put(System.currentTimeMillis(), amount);
+        trimHistory(records);
     }
 
     public void addWithdrawRecord(String playerName, long amount)
     {
-        withdrawHistory.computeIfAbsent(playerName, k -> new ConcurrentHashMap<>())
-            .put(System.currentTimeMillis(), amount);
+        Map<Long, Long> records = withdrawHistory.computeIfAbsent(playerName, k -> new ConcurrentHashMap<>());
+        records.put(System.currentTimeMillis(), amount);
+        trimHistory(records);
+    }
+
+    private void trimHistory(Map<Long, Long> records)
+    {
+        int limit = maxRecordsPerPlayer;
+        if (records.size() <= limit) return;
+
+        ArrayList<Long> timestamps = new ArrayList<>(records.keySet());
+        Collections.sort(timestamps);
+        int toRemove = timestamps.size() - limit;
+        for (int i = 0; i < toRemove; i++)
+        {
+            records.remove(timestamps.get(i));
+        }
     }
 
     public Map<String, Map<Long, Long>> getDepositHistory()

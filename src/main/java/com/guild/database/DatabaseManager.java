@@ -34,7 +34,7 @@ public class DatabaseManager
     {
         try
         {
-            // 数据库类型从 config.yml 读取（修复旧版忽略 MySQL 配置、强制使用 SQLite 的问题）
+
             String type = plugin.getConfig().getString("database.type", "sqlite");
             this.mysql = "mysql".equalsIgnoreCase(type);
             HikariConfig config = new HikariConfig();
@@ -64,6 +64,7 @@ public class DatabaseManager
                     dataFolder.mkdirs();
                 }
                 String dbPath = dataFolder.getAbsolutePath() + "/guilds.db";
+                backupSqlite(dataFolder, new File(dbPath));
                 config.setJdbcUrl("jdbc:sqlite:" + dbPath);
                 config.setMaximumPoolSize(3);
                 config.setMinimumIdle(1);
@@ -77,6 +78,7 @@ public class DatabaseManager
             config.setPoolName("GuildPool");
             this.dataSource = new HikariDataSource(config);
             createTables();
+            migrateLegacySchema();
             loadGuilds();
             loadPlayerCurrencies();
             plugin.getLogger().info("Database initialized: " + (mysql ? "MySQL" : "SQLite"));
@@ -87,6 +89,109 @@ public class DatabaseManager
         }
     }
 
+    private void backupSqlite(File dataFolder, File dbFile)
+    {
+        if (!dbFile.exists()) return;
+        try
+        {
+            String stamp = new java.text.SimpleDateFormat("yyyyMMdd-HHmmss").format(new java.util.Date());
+            File backupDir = new File(dataFolder, "backup/db-" + stamp);
+            backupDir.mkdirs();
+            for (String suffix : new String[]
+            { "", "-wal", "-shm" })
+            {
+                File f = new File(dbFile.getAbsolutePath() + suffix);
+                if (f.exists())
+                {
+                    java.nio.file.Files.copy(f.toPath(), new File(backupDir, "guilds.db" + suffix).toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
+            plugin.getLogger().info("旧数据库已备份至: " + backupDir.getName());
+        }
+        catch (Exception e)
+        {
+            plugin.getLogger().warning("数据库备份失败（继续启动）: " + e.getMessage());
+        }
+    }
+
+    private void migrateLegacySchema() throws SQLException
+    {
+        String[][] columns =
+        {
+            { "guilds", "daily_experience", "BIGINT" },
+            { "guilds", "motd", "TEXT" },
+            { "guilds", "public_guild", "INTEGER" },
+            { "guilds", "created_time", "BIGINT" },
+            { "guild_members", "total_contribution", "BIGINT" },
+            { "guild_members", "daily_contribution", "BIGINT" },
+            { "guild_members", "muted", "INTEGER" },
+            { "guild_members", "muted_until", "BIGINT" },
+            { "guild_members", "nickname", "TEXT" },
+            { "player_settings", "guild_invites", "INTEGER" },
+            { "player_settings", "join_notifications", "INTEGER" },
+            { "guild_banks", "balance", "BIGINT" },
+            { "player_currency", "balance", "BIGINT" }
+        };
+        for (String[] column : columns)
+        {
+            ensureColumn(column[0], column[1], column[2]);
+        }
+    }
+
+    private void ensureColumn(String table, String column, String definition) throws SQLException
+    {
+        if (mysql)
+        {
+            try (Connection conn = getConnection();
+            ResultSet rs = conn.createStatement().executeQuery(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '"
+                    + table + "' AND COLUMN_NAME = '" + column + "'"))
+            {
+                if (rs.next() && rs.getInt(1) > 0) return;
+            }
+            try (Statement stmt = getConnection().createStatement())
+            {
+                stmt.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition);
+                plugin.getLogger().info("已补全旧数据库列: " + table + "." + column);
+            }
+            catch (SQLException e)
+            {
+                if (!isDuplicateColumnError(e)) throw e;
+            }
+            return;
+        }
+        boolean exists = false;
+        try (Connection conn = getConnection();
+        ResultSet rs = conn.createStatement().executeQuery("PRAGMA table_info(" + table + ")"))
+        {
+            while (rs.next())
+            {
+                if (column.equalsIgnoreCase(rs.getString("name")))
+                {
+                    exists = true;
+                    break;
+                }
+            }
+        }
+        if (exists) return;
+        try (Statement stmt = getConnection().createStatement())
+        {
+            stmt.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition);
+            plugin.getLogger().info("已补全旧数据库列: " + table + "." + column);
+        }
+        catch (SQLException e)
+        {
+            if (!isDuplicateColumnError(e)) throw e;
+        }
+    }
+
+    private boolean isDuplicateColumnError(SQLException e)
+    {
+        String message = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
+        return message.contains("duplicate column") || message.contains("already exists");
+    }
+
     private Connection getConnection() throws SQLException
     {
         return dataSource.getConnection();
@@ -94,7 +199,7 @@ public class DatabaseManager
 
     private void createTables() throws SQLException
     {
-        // MySQL 不允许 TEXT 列作主键、不支持 INSERT OR REPLACE，建表语句按方言区分
+
         if (mysql)
         {
             try (Connection conn = getConnection();
@@ -276,8 +381,6 @@ public class DatabaseManager
         }
     }
 
-    // ---------- 玩家公会币持久化 ----------
-
     public void loadPlayerCurrencies()
     {
         Map<UUID, Long> balances = new HashMap<>();
@@ -304,10 +407,6 @@ public class DatabaseManager
         plugin.getGuildManager().loadPlayerCurrencyBalances(balances);
     }
 
-    /**
-     * 确保玩家拥有公会币账户行；不存在时以 initialBalance 建户。
-     * 返回该玩家当前的公会币余额。
-     */
     public long ensurePlayerCurrency(UUID playerUuid, long initialBalance)
     {
         String uuid = playerUuid.toString();
@@ -359,7 +458,6 @@ public class DatabaseManager
         }
     }
 
-    /** 公会重命名时迁移数据库中所有关联记录 */
     public void migrateGuildName(String oldName, String newName)
     {
         String[] tables = { "guild_members", "guild_permissions", "guild_banks" };
@@ -401,10 +499,6 @@ public class DatabaseManager
         }
     }
 
-    /**
-     * 生成方言感知的 upsert 语句：
-     * SQLite 使用 INSERT OR REPLACE，MySQL 使用 ON DUPLICATE KEY UPDATE
-     */
     private String upsertSql(String table, String... columns)
     {
         StringBuilder sb = new StringBuilder("INSERT ");
@@ -456,6 +550,12 @@ public class DatabaseManager
                     ps.setLong(10, guild.getCreatedTime());
                     ps.executeUpdate();
                 }
+
+                try (PreparedStatement delPs = conn.prepareStatement("DELETE FROM guild_members WHERE guild_name = ?"))
+                {
+                    delPs.setString(1, guild.getName());
+                    delPs.executeUpdate();
+                }
                 try (PreparedStatement insertPs = conn.prepareStatement(upsertSql("guild_members", "guild_name", "uuid", "role", "joined_time", "total_contribution", "daily_contribution", "muted", "muted_until", "nickname")))
                 {
                     for (GuildMember member : guild.getMembers().values())
@@ -466,7 +566,7 @@ public class DatabaseManager
                         insertPs.setLong(4, member.getJoinedTime());
                         insertPs.setLong(5, member.getTotalContribution());
                         insertPs.setLong(6, member.getDailyContribution());
-                        // 修复旧版禁言时间丢失：保存真实到期时间戳
+
                         boolean muted = member.getMutedUntil() > System.currentTimeMillis();
                         insertPs.setBoolean(7, muted);
                         insertPs.setLong(8, member.getMutedUntil());
@@ -475,7 +575,7 @@ public class DatabaseManager
                     }
                     insertPs.executeBatch();
                 }
-                // 修复旧版权限表从不保存的问题
+
                 try (PreparedStatement permPs = conn.prepareStatement(upsertSql("guild_permissions", "guild_name", "permission", "level")))
                 {
                     for (Map.Entry<String, GuildPermission> entry : guild.getPermissions().entrySet())

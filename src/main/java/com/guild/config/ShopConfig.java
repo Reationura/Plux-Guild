@@ -13,7 +13,8 @@ public class ShopConfig extends SimpleFileConfig
     private boolean showLockedItems;
     private String lockedDisplayName;
     private List<String> lockedLore;
-    private final Map<String, ShopItemEntry> items = new LinkedHashMap<>();
+
+    private Map<String, ShopItemEntry> items;
 
     public ShopConfig(GuildPlugin plugin)
     {
@@ -33,7 +34,7 @@ public class ShopConfig extends SimpleFileConfig
         {
             lockedLore = Arrays.asList("&c需要公会等级: %level%", "&7公会达到 Lv.%level% 后解锁");
         }
-        items.clear();
+        items = new LinkedHashMap<>();
         ConfigurationSection itemsSection = config.getConfigurationSection("items");
         if (itemsSection != null)
         {
